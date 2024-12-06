@@ -101,3 +101,55 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+
+.overlay {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 10%; /* Adjust height to fit the half-circle */
+  background-color: rgba(0, 0, 0, 0); /* Transparent overlay */
+  display: flex;
+  justify-content: center;
+  align-items: flex-end; /* Align to the bottom of the screen */
+  z-index: 1000;
+  /* opacity: 0.1; */
+}
+
+
+
+.group-selection {
+  position: fixed; /* Fix the element at the bottom of the screen */
+  bottom: 0; /* Align it at the bottom */
+  left: 50%; /* Center it horizontally */
+  transform: translateX(-50%); /* Ensure it’s perfectly centered */
+  background-color: rgba(251, 240, 240, 0); /* Set your desired background color */
+  padding: 40px 0; /* Adjust the vertical padding to suit your design */
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  gap: 40px;
+  width: 80%; /* Control the width of the half-circle */
+  border-radius: 2500% 2500% 0 0; /* Round only the top edges */
+  overflow: hidden; /* Ensure content stays within the shape */
+  z-index: 1000; /* Ensure the osverlay appears on top */
+}
+
+
+.group-selection button {
+  padding: 10px 20px;
+  background-color: white;
+  color: black;
+  border: none;
+  cursor: pointer;
+  border-radius: 20px;
+  transition: transform 0.3s ease, background-color 0.3s;
+
+}
+
+.group-selection button:hover {
+  background-color: #F7E0C0;
+  transform: scale(1.5);
+  
+}
