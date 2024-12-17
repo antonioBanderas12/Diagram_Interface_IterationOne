@@ -7,7 +7,7 @@ import * as functions from './functions.js';
 
 document.addEventListener('DOMContentLoaded', function() {
   const scene = new THREE.Scene();
-  // addGridHelper(scene);
+  addGridHelper(scene);
 
   const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
   camera.position.z = 25;
@@ -42,6 +42,8 @@ document.addEventListener('DOMContentLoaded', function() {
   let currentGroup = 0;
   let viewZero = new THREE.Vector3(0, 0, 0)
   let rotateZero = new THREE.Euler()
+  const reverseButton = document.getElementById('reverseButton');
+
 
   
 
@@ -50,8 +52,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const bigCubeGeometry = new THREE.BoxGeometry(bigCubeSize, bigCubeSize, bigCubeSize);
   const bigCubeMaterial = new THREE.MeshBasicMaterial({ color: 0x555555, wireframe: true });
   const bigCube = new THREE.Mesh(bigCubeGeometry, bigCubeMaterial);
-  scene.add(bigCube);
-  
+  scene.add(bigCube);  
 
 
 
@@ -264,7 +265,7 @@ function updatePosOver() {
       });
     });
   });
-}, 1000);
+}, 500);
 }
 
 
@@ -350,7 +351,7 @@ setTimeout(() => {
       placedPositions.push({ x: randomX, y: randomY, z: randomZ });
     });
   });
-}, 1000);
+}, 500);
 }
 
 
@@ -362,10 +363,12 @@ setTimeout(() => {
 
 
 
-  // function addGridHelper(scene) {
-  //   const gridHelper = new THREE.GridHelper(50, 10);
-  //   scene.add(gridHelper);
-  // }
+  function addGridHelper(scene) {
+    const gridHelper = new THREE.GridHelper(50, 10);
+    scene.add(gridHelper);
+  }
+
+
 
   // Click detection
   const raycaster = new THREE.Raycaster();
@@ -374,7 +377,7 @@ setTimeout(() => {
   window.addEventListener('click', onClick);
   window.addEventListener('mousemove', onMouseMove, false);
   function onClick(event) {
-    if(view ===0){
+     if(view ===0){
     const rect = renderer.domElement.getBoundingClientRect();
     mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
@@ -382,6 +385,7 @@ setTimeout(() => {
   
     const visibleBoxes = boxes.filter(box => box.visible);
     const intersects = raycaster.intersectObjects(visibleBoxes);
+    
   
     if (intersects.length > 0) {
       const clickedObject = intersects[0].object;
@@ -408,7 +412,7 @@ setTimeout(() => {
         showChildGroupsOverlay(children, clickedObject);
       }
     }
-  }
+   }
 }
 
 
@@ -428,59 +432,22 @@ setTimeout(() => {
 
 //changeView
 
-document.getElementById('changeView').addEventListener('click', () => {
-  if (view == 0) {
+// view 1
+document.getElementById('structure').addEventListener('click', () => {
     updatePosOver();
     viewZero.copy(camera.position);
     rotateZero.copy(camera.rotation);
     view = 1;
     console.log("view: ", view)
+    reverseButton.style.display = 'none';
+
     manNavigation();
-
-
-    const boundingBox = new THREE.Box3();
-    boxes.forEach(cube => boundingBox.expandByObject(cube));
-
-    const center = new THREE.Vector3();
-    boundingBox.getCenter(center);
-    const size = boundingBox.getSize(new THREE.Vector3()).length();
-
-    const targetPosition = new THREE.Vector3(center.x, center.y + bigCubeSize, center.z);
-
-    const lookAtTarget = new THREE.Vector3(camera.position.x, camera.position.y, camera.position.z); // Start from current position
-
-
-
-    // Smooth transition of camera position and lookAt using GSAP
-    gsap.to(camera.position, {
-      duration: 1, // Transition duration in seconds
-      x: targetPosition.x,
-      y: targetPosition.y,
-      z: targetPosition.z,
-      ease: "power2.inOut" // Smooth easing function
-    });
-
-    gsap.to(lookAtTarget, {
-      duration: 1,
-      x: center.x,
-      y: center.y,
-      z: center.z,
-      ease: "power2.inOut",
-      onUpdate: () => {
-        if (gsap.getProperty(camera.position, 'y') > targetPosition.x) {  // * 0.4
-          camera.lookAt(lookAtTarget);
-        }
-      }
-    });
-
+    changeMode()
 
     let hiddenBoxes = boxes.filter(box => !box.visible);
     hiddenBoxes.forEach(cube => easeInBoxes(cube));
 
-
-
-
-
+  });
 
 
 
@@ -489,89 +456,54 @@ document.getElementById('changeView').addEventListener('click', () => {
 
 
 // view 2
-  } else if (view == 1) {
-    updatePosRel();
+document.getElementById('relations').addEventListener('click', () => {
+  updatePosRel();
   view = 2;
   console.log("view: ", view);
+  reverseButton.style.display = 'none';
+
 
   boxes.forEach(box => box.visible = true);
   manNavigation();
-
-  // Calculate bounding box for all cubes
-  const boundingBox = new THREE.Box3();
-  boxes.forEach(cube => boundingBox.expandByObject(cube));
-
-  // Get center and size of the bounding box
-  const center = new THREE.Vector3();
-  boundingBox.getCenter(center);
-  const size = boundingBox.getSize(new THREE.Vector3()).length();
-
-  // Position the camera to view the left face
-  const cameraOffset = bigCubeSize * 1.5; // Distance from the left face
-  const targetPosition = new THREE.Vector3(
-    center.x - cameraOffset,  // Move camera to the left of the center
-    center.y,                 // Align vertically to the center
-    center.z                  // Keep the z-coordinate the same
-  );
-
-  // Animate camera position
-  gsap.to(camera.position, {
-    duration: 1, // Transition duration
-    x: targetPosition.x,
-    y: targetPosition.y,
-    z: targetPosition.z,
-    ease: "power2.inOut",
-    onUpdate: () => {
-      camera.lookAt(center); // Always look at the center of the bounding box
-    },
-    onComplete: () => {
-      camera.lookAt(center); // Ensure final orientation
-    }
-    });
-
-    
-
-
-
+  changeMode()
+  });
 
 
 
 
 
 // view 0
-  } else if (view == 2) {
+  document.getElementById('explore').addEventListener('click', () => {
     view = 0;
     console.log("view: ", view)
+    reverseButton.style.display = 'block';
 
     updateInitPositions();
     boxes.forEach(box => box.visible = false);
     boxes.filter(box => box.userData.group === currentGroup).forEach(box => box.visible = true);
 
+    changeMode()
+
     // Transition the camera back to the original position and rotation
-    gsap.to(camera.position, {
-      duration: 1, // Transition duration in seconds
-      x: viewZero.x,
-      y: viewZero.y,
-      z: viewZero.z,
-      onUpdate: () => {
-        // Start looking at the original position when 70% of the transition is completed
-        if (gsap.getProperty(camera.position, 'x') === viewZero.x) {
-          camera.lookAt(viewZero);
-        }
-      },
-    });
-    gsap.to(camera.rotation, {
-      duration: 1,
-      x: rotateZero.x,
-      y: rotateZero.y,
-      z: rotateZero.z,
-    });
-
-
-
-
-  }
-});
+  //   gsap.to(camera.position, {
+  //     duration: 1, // Transition duration in seconds
+  //     x: viewZero.x,
+  //     y: viewZero.y,
+  //     z: viewZero.z,
+  //     onUpdate: () => {
+  //       // Start looking at the original position when 70% of the transition is completed
+  //       if (gsap.getProperty(camera.position, 'x') === viewZero.x) {
+  //         camera.lookAt(viewZero);
+  //       }
+  //     },
+  //   });
+  //   gsap.to(camera.rotation, {
+  //     duration: 1,
+  //     x: rotateZero.x,
+  //     y: rotateZero.y,
+  //     z: rotateZero.z,
+  //   });
+   });
 
 
 
@@ -587,6 +519,10 @@ document.getElementById('changeView').addEventListener('click', () => {
 
 //reverse
 document.getElementById('reverseButton').addEventListener('click', () => {
+  if(view === 0){
+
+
+
   let parentGroups = [];
   
   // Gather unique parent groups
@@ -646,7 +582,7 @@ document.getElementById('reverseButton').addEventListener('click', () => {
   });
 
   document.body.appendChild(overlay);
-
+  }
 
 });
 
@@ -749,6 +685,58 @@ function onHover(cube) {
 // helpers
 
 
+
+
+
+
+
+
+
+
+
+function changeMode() {
+  const boundingBox = new THREE.Box3();
+  boxes.forEach(cube => boundingBox.expandByObject(cube));
+  const center = new THREE.Vector3();
+  boundingBox.getCenter(center);
+  const size = boundingBox.getSize(new THREE.Vector3()).length();
+
+  const targetPosition = new THREE.Vector3();
+  const rot = new THREE.Euler();
+
+  // Setting target position and rotation based on the view
+  if (view === 1) {
+    targetPosition.set(center.x, center.y + bigCubeSize, center.z);
+    rot.set(-Math.PI / 2, 0, 0); // 90 degrees in radians
+  }
+  if (view === 2) {
+    targetPosition.set(center.x - bigCubeSize, center.y, center.z);
+    rot.set(Math.PI / 2, -Math.PI / 2, Math.PI / 2); // 90 degrees in radians
+  }
+  if (view === 0) {
+    targetPosition.set(currentGroup.position.x, currentGroup.position.y, currentGroup.position.z + 25);
+    rot.set(0, 0, 0);
+  }
+
+  // const lookAtTarget = new THREE.Vector3(center.x, center.y, center.z); // Camera should look at the center
+
+  // Smooth transition of camera position and lookAt using GSAP
+  gsap.to(camera.position, {
+    duration: 1, // Transition duration in seconds
+    x: targetPosition.x,
+    y: targetPosition.y,
+    z: targetPosition.z,
+    ease: "power2.inOut" // Smooth easing function
+  });
+
+  gsap.to(camera.rotation, {
+    duration: 1,
+    x: rot.x,
+    y: rot.y,
+    z: rot.z,
+    ease: "power2.inOut"
+  });
+}
 
 
 
@@ -1067,8 +1055,8 @@ function removeHover(cube) {
     if(view == 0){
       camera.position.lerp(targetPosition, 0.05);
     }
-  
     renderer.render(scene, camera);
+    console.log(camera.rotation)
   }
   animate();
 
