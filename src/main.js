@@ -6,12 +6,14 @@ import * as functions from './functions.js';
 
 
 document.addEventListener('DOMContentLoaded', function() {
+
+  //setup
   const scene = new THREE.Scene();
+
   addGridHelper(scene);
 
   const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
   camera.position.z = 25;
-
   const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
   renderer.setSize(window.innerWidth - 18, window.innerHeight - 18);
   renderer.setPixelRatio(window.devicePixelRatio);
@@ -26,23 +28,25 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
   //Variables
-  const white = 0xFFFFFF; 
-  const red = 0xFF0000;
-  const blue = 0x0000FF;
-  const green = 0x00FF00;
-
 
   const boxSize = 5;
   let targetPosition = new THREE.Vector3();
   let currentLookAt = new THREE.Vector3(0, 0, 0);  // Camera focus point
   const boxes = [];
   let hoveredCube = null;
+  let structure = 0;
+  let relations = 1;
+  let explore = true;
 
-  let view = 0;
+
+  let mode = structure;
   let currentGroup = 0;
-  let viewZero = new THREE.Vector3(0, 0, 0)
-  let rotateZero = new THREE.Euler()
   const reverseButton = document.getElementById('reverseButton');
+
+  const white = 0xFFFFFF; 
+  const red = 0xFF0000;
+  const blue = 0x0000FF;
+  const green = 0x00FF00;
 
 
   
@@ -58,7 +62,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 //createBoxes
-
   function createBox(name, description, status, parentReferences = [], relations = [], group = null) {
 
     let colour = white;
@@ -123,239 +126,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 
-
-
-
-
-
-
-
-  // positions
-
-//view 0 positions
-  function updateInitPositions() {
-    setTimeout(() => {
-    const levelSpacing = 25; // Distance between levels on the z-axis
-    const groupSpacing = 50; // Distance between groups within a level
-    const boxSpacing = 7;    // Distance between boxes within a cluster
-  
-    const levels = {};
-    boxes.forEach(cube => {
-      const level = cube.userData.level;
-      if (!levels[level]) levels[level] = [];
-      levels[level].push(cube);
-    });
-  
-    Object.keys(levels).forEach((zLevel, levelIndex) => {
-      const cubesAtLevel = levels[zLevel];
-  
-      // Group cubes by their `group` value
-      const clusters = {};
-      cubesAtLevel.forEach(cube => {
-        const cluster = cube.userData.group;
-        if (!clusters[cluster]) clusters[cluster] = [];
-        clusters[cluster].push(cube);
-      });
-  
-      // Calculate total width of all clusters at this level
-      const totalWidth = Object.keys(clusters).length * groupSpacing;
-  
-      // Calculate starting offset to center clusters at x = 0
-      const levelOffsetX = -totalWidth / 2;
-  
-      Object.keys(clusters).forEach((clusterKey, clusterIndex) => {
-        const cubesInCluster = clusters[clusterKey];
-  
-        // Calculate cluster offset based on level offset and cluster index
-        const clusterOffsetX = levelOffsetX + clusterIndex * groupSpacing;
-  
-        // Arrange cubes in rows and columns within the cluster
-        const cols = Math.ceil(Math.sqrt(cubesInCluster.length));
-        cubesInCluster.forEach((cube, i) => {
-          const col = i % cols;
-          const row = Math.floor(i / cols);
-
-
-
-  
-          // Calculate positions
-          const x = clusterOffsetX + col * boxSpacing;
-          const y = row * boxSpacing;
-          const z = -levelIndex * levelSpacing; // Place at the correct z-level
-
-
-          gsap.to(cube.position, {
-            duration: 1,
-            x: x,
-            y: y,
-            z: z,
-            ease: "power2.inOut",
-          });
-  
-          // Set the position of the cube
-          // cube.position.set(x, y, z);
-        });
-      });
-    });
-  }, 500);
-  }
-
-
-
-
-
-// view1positions
-function updatePosOver() {
-  setTimeout(() => {
-  
-  const levelSpacing = 25; // Distance between levels (z-axis)
-  const groupSpacing = 50; // Distance between groups within a level (x-axis)
-  const boxSpacing = 7;    // Distance between boxes within a cluster (x-axis)
-  const bigCubeSize = 100; // Assuming the big cube has a size of 100 units
-
-  // Set y-position to the top face of the big cube
-  const yTopFace = bigCubeSize / 2;
-
-  const levels = {};
-  boxes.forEach(cube => {
-    const level = cube.userData.level;
-    if (!levels[level]) levels[level] = [];
-    levels[level].push(cube);
-  });
-
-  // Calculate the total depth of all levels to center along the z-axis
-  const totalLevels = Object.keys(levels).length;
-  const totalDepth = (totalLevels - 1) * levelSpacing;
-  const centerZOffset = -totalDepth / 2;
-
-  Object.keys(levels).forEach((zLevel, levelIndex) => {
-    const cubesAtLevel = levels[zLevel];
-
-    // Group cubes by their `group` value
-    const clusters = {};
-    cubesAtLevel.forEach(cube => {
-      const cluster = cube.userData.group;
-      if (!clusters[cluster]) clusters[cluster] = [];
-      clusters[cluster].push(cube);
-    });
-
-    // Calculate total width of all clusters at this level to center along the x-axis
-    const totalWidth = Object.keys(clusters).length * groupSpacing;
-    const levelOffsetX = -totalWidth / 2;
-
-    Object.keys(clusters).forEach((clusterKey, clusterIndex) => {
-      const cubesInCluster = clusters[clusterKey];
-
-      // Calculate cluster offset based on level offset and cluster index
-      const clusterOffsetX = levelOffsetX + clusterIndex * groupSpacing;
-
-      cubesInCluster.forEach((cube, i) => {
-        const x = clusterOffsetX + i * boxSpacing;
-        const y = yTopFace; // Place on the top face of the big cube
-        const z = centerZOffset + levelIndex * levelSpacing; // Centered along the z-axis
-
-        // Animate the cube's position
-        gsap.to(cube.position, {
-          duration: 1,
-          x: x,
-          y: y,
-          z: z,
-          ease: "power2.inOut",
-        });
-      });
-    });
-  });
-}, 500);
-}
-
-
-
-
-
-
-//view 2 positions
-
-function updatePosRel() {
-setTimeout(() => {
-  
-  const groupSpacing = 50;    // Spacing between groups
-  const cloudSpread = 30;     // Spread of cubes within each group
-  const minDistance = 10;     // Minimum distance between cubes to avoid overlap
-  const maxAttempts = 20;     // Max retries to find a non-overlapping position   // Assuming the big cube has a size of 100 units
-
-  // Group cubes by their `group` value
-  const clusters = {};
-  boxes.forEach(cube => {
-    const cluster = cube.userData.group;
-    if (!clusters[cluster]) clusters[cluster] = [];
-    clusters[cluster].push(cube);
-  });
-
-  // Arrange groups in a grid layout
-  const groupKeys = Object.keys(clusters);
-  const numCols = Math.ceil(Math.sqrt(groupKeys.length));
-  const numRows = Math.ceil(groupKeys.length / numCols);
-
-  // Calculate total width and height of the grid to center the layout
-  const totalWidth = (numCols - 1) * groupSpacing;
-  const totalHeight = (numRows - 1) * groupSpacing;
-
-  // Offsets to center the grid on the left face
-  const centerZOffset = -totalWidth / 2;
-  const centerYOffset = totalHeight / 2;
-  const leftFaceX = -bigCubeSize / 2; // Position along the left face
-
-  groupKeys.forEach((clusterKey, index) => {
-    // Calculate grid position for each group (using z and y instead of x and y)
-    const col = index % numCols;
-    const row = Math.floor(index / numCols);
-    const groupZ = centerZOffset + col * groupSpacing;   // Spread groups along the z-axis
-    const groupY = centerYOffset - row * groupSpacing;   // Spread groups along the y-axis
-
-    const cubesInCluster = clusters[clusterKey];
-
-    // Position cubes within each group with collision avoidance
-    const placedPositions = []; // Store placed positions to check for collisions
-
-    cubesInCluster.forEach(cube => {
-      let validPosition = false;
-      let randomZ, randomY, randomX;
-      let attempts = 0;
-
-      while (!validPosition && attempts < maxAttempts) {
-        randomZ = groupZ + (Math.random() - 0.5) * cloudSpread;  // Random spread along z-axis
-        randomY = groupY + (Math.random() - 0.5) * cloudSpread;  // Random spread along y-axis
-        randomX = leftFaceX;                                      // Align on the left face
-
-        // Ensure cubes do not overlap within the group
-        validPosition = placedPositions.every(pos => {
-          const dx = pos.x - randomX;
-          const dy = pos.y - randomY;
-          const dz = pos.z - randomZ;
-          const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-          return distance >= minDistance;
-        });
-
-        attempts++;
-      }
-
-      gsap.to(cube.position, {
-        duration: 1,            // Animation duration in seconds
-        x: randomX,
-        y: randomY,
-        z: randomZ,
-        ease: "power2.inOut",   // Smooth easing function
-      });
-
-      // Save the new position to avoid overlaps
-      placedPositions.push({ x: randomX, y: randomY, z: randomZ });
-    });
-  });
-}, 500);
-}
-
-
-
   
 
 
@@ -363,21 +133,18 @@ setTimeout(() => {
 
 
 
-  function addGridHelper(scene) {
-    const gridHelper = new THREE.GridHelper(50, 10);
-    scene.add(gridHelper);
-  }
 
 
 
-  // Click detection
+
+  // Click detection and naigation
   const raycaster = new THREE.Raycaster();
   const mouse = new THREE.Vector2();
 
   window.addEventListener('click', onClick);
   window.addEventListener('mousemove', onMouseMove, false);
   function onClick(event) {
-     if(view ===0){
+    if(mode === structure && explore){
     const rect = renderer.domElement.getBoundingClientRect();
     mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
@@ -430,17 +197,14 @@ setTimeout(() => {
   
 
 
-//changeView
+//changeMode
 
-// view 1
+// structure button
 document.getElementById('structure').addEventListener('click', () => {
-    updatePosOver();
-    viewZero.copy(camera.position);
-    rotateZero.copy(camera.rotation);
-    view = 1;
-    console.log("view: ", view)
+    structurePos();
+    explore = false;
+    mode = structure;
     reverseButton.style.display = 'none';
-
     manNavigation();
     changeMode()
 
@@ -450,19 +214,12 @@ document.getElementById('structure').addEventListener('click', () => {
   });
 
 
-
-
-
-
-
-// view 2
+// relations button
 document.getElementById('relations').addEventListener('click', () => {
-  updatePosRel();
-  view = 2;
-  console.log("view: ", view);
+  relationsPos();
+  explore = false;
+  mode = relations;
   reverseButton.style.display = 'none';
-
-
   boxes.forEach(box => box.visible = true);
   manNavigation();
   changeMode()
@@ -472,37 +229,26 @@ document.getElementById('relations').addEventListener('click', () => {
 
 
 
-// view 0
+// explore structure
   document.getElementById('explore').addEventListener('click', () => {
-    view = 0;
-    console.log("view: ", view)
+    structureExplorePos();
+
+
+    setTimeout(() => {
+      explorationView()
+      boxes.forEach(box => box.visible = false);
+      boxes.filter(box => box.userData.group === currentGroup).forEach(box => box.visible = true);
+    }, 1000);
+
+    setTimeout(() => {
+      
+    explore = true;
     reverseButton.style.display = 'block';
 
-    updateInitPositions();
-    boxes.forEach(box => box.visible = false);
-    boxes.filter(box => box.userData.group === currentGroup).forEach(box => box.visible = true);
+    // boxes.filter(box => box.userData.group === !currentGroup).forEach(box => easeOutBoxes(box));
 
-    changeMode()
+  }, 1500);
 
-    // Transition the camera back to the original position and rotation
-  //   gsap.to(camera.position, {
-  //     duration: 1, // Transition duration in seconds
-  //     x: viewZero.x,
-  //     y: viewZero.y,
-  //     z: viewZero.z,
-  //     onUpdate: () => {
-  //       // Start looking at the original position when 70% of the transition is completed
-  //       if (gsap.getProperty(camera.position, 'x') === viewZero.x) {
-  //         camera.lookAt(viewZero);
-  //       }
-  //     },
-  //   });
-  //   gsap.to(camera.rotation, {
-  //     duration: 1,
-  //     x: rotateZero.x,
-  //     y: rotateZero.y,
-  //     z: rotateZero.z,
-  //   });
    });
 
 
@@ -519,10 +265,7 @@ document.getElementById('relations').addEventListener('click', () => {
 
 //reverse
 document.getElementById('reverseButton').addEventListener('click', () => {
-  if(view === 0){
-
-
-
+  if(mode === structure && explore){
   let parentGroups = [];
   
   // Gather unique parent groups
@@ -550,16 +293,11 @@ document.getElementById('reverseButton').addEventListener('click', () => {
     return;
   }
 
-
   // If multiple parents, present selection to the user
   const existingOverlay = document.querySelector('.overlay');
   if (existingOverlay) {
     existingOverlay.remove();
   }
-
-  // boxes.forEach(box => {
-  //   box.visible = false;
-  // });
   
   const overlay = document.createElement('div');
   overlay.classList.add('overlay');
@@ -592,11 +330,6 @@ document.getElementById('reverseButton').addEventListener('click', () => {
 
 
 
-
-
-
-
-
 //mousemove and hover
 function onMouseMove(event) {
   const rect = renderer.domElement.getBoundingClientRect();
@@ -621,13 +354,10 @@ function onMouseMove(event) {
     hoveredCube = null;
   }
 }
-
-
-
 function onHover(cube) {
   if (cube && cube.visible) {
 
-   if(view === 0){
+   if(mode === structure && explore){
 
       if (cube.userData.children.length > 0){
 
@@ -636,7 +366,7 @@ function onHover(cube) {
       }
    }
 
-   if (view === 1) {
+   if (mode === structure && !explore) {
      createOutline(cube);
      cube.userData.children?.forEach(child => {
        createOutline(child)
@@ -647,7 +377,7 @@ function onHover(cube) {
        createLine(cube, parent);
    });
    }
-   if(view === 2) {
+   if(mode === relations && !explore) {
      createOutline(cube);
      cube.userData.relations?.forEach(child => {
        createOutline(child)
@@ -684,43 +414,106 @@ function onHover(cube) {
 // helpers
 // helpers
 
+// navigation helpers
+function addGridHelper(scene) {
+  const gridHelper = new THREE.GridHelper(50, 10);
+  scene.add(gridHelper);
+}
+const axesHelper = new THREE.AxesHelper( 500 ); scene.add( axesHelper );
+
+function manNavigation() {
+
+  let isDragging = false;
+  let prevMousePosition = { x: 0, y: 0 };
+  
+  const canvas = document.querySelector('canvas'); 
+  
+  canvas.addEventListener('wheel', (event) => {
+    if (mode === structure && !explore) {
+      camera.position.z += event.deltaY * 0.1; 
+    }
+
+    if (mode === relations && !explore) {
+      camera.position.x -= event.deltaY * 0.1; 
+    }
+  });
+  
+  canvas.addEventListener('mousedown', (event) => {
+    if (mode === structure && !explore) {
+      isDragging = true;
+      prevMousePosition.x = event.clientX;
+      prevMousePosition.y = event.clientY;
+    }
+
+    if (mode === relations && !explore) {
+      isDragging = true;
+      prevMousePosition.x = event.clientX;
+      prevMousePosition.y = event.clientY;
+    }
+  });
+  
+  canvas.addEventListener('mousemove', (event) => {
+    if (mode === structure && !explore && isDragging) {
+      const deltaX = (event.clientX - prevMousePosition.x) * 0.1; // Adjust drag sensitivity
+      const deltaY = (event.clientY - prevMousePosition.y) * 0.1;
+  
+      // Modify camera's x and z positions based on drag
+      camera.position.x -= deltaX;
+      camera.position.y += deltaY;
+  
+      // Update previous mouse position
+      prevMousePosition.x = event.clientX;
+      prevMousePosition.y = event.clientY;
+    }
 
 
+    if (mode === relations && !explore && isDragging) {
+      const deltaX = (event.clientX - prevMousePosition.x) * 0.1; // Adjust drag sensitivity
+      const deltaY = (event.clientY - prevMousePosition.y) * 0.1;
+  
+      // Since the plane is rotated, modify the camera's z and y positions
+      camera.position.z -= deltaX;
+      camera.position.y += deltaY;
+  
+      // Update previous mouse position
+      prevMousePosition.x = event.clientX;
+      prevMousePosition.y = event.clientY;
+    }
+  });
+  
+  canvas.addEventListener('mouseup', () => {
+    if (mode === structure && !explore) isDragging = false;
 
+    if (mode === relations && !explore) isDragging = false;
+  });
+  
+  canvas.addEventListener('mouseleave', () => {
+    if (mode === structure && !explore) isDragging = false;
 
-
-
-
-
+    if (mode === relations && !explore) isDragging = false;
+  });
+};
 
 
 function changeMode() {
-  const boundingBox = new THREE.Box3();
-  boxes.forEach(cube => boundingBox.expandByObject(cube));
-  const center = new THREE.Vector3();
-  boundingBox.getCenter(center);
-  const size = boundingBox.getSize(new THREE.Vector3()).length();
-
-  const targetPosition = new THREE.Vector3();
+  const targetPosition = new THREE.Vector3(0,0,0);
   const rot = new THREE.Euler();
 
-  // Setting target position and rotation based on the view
-  if (view === 1) {
-    targetPosition.set(center.x, center.y + bigCubeSize, center.z);
-    rot.set(-Math.PI / 2, 0, 0); // 90 degrees in radians
+
+  if (mode === structure && !explore) {
+    targetPosition.z += bigCubeSize;
+    rot.set(0, 0, 0); // 90 degrees in radians
   }
-  if (view === 2) {
-    targetPosition.set(center.x - bigCubeSize, center.y, center.z);
+
+
+  if (mode === relations && !explore) {
+    targetPosition.x -= bigCubeSize;
+
     rot.set(Math.PI / 2, -Math.PI / 2, Math.PI / 2); // 90 degrees in radians
   }
-  if (view === 0) {
-    targetPosition.set(currentGroup.position.x, currentGroup.position.y, currentGroup.position.z + 25);
-    rot.set(0, 0, 0);
-  }
 
-  // const lookAtTarget = new THREE.Vector3(center.x, center.y, center.z); // Camera should look at the center
 
-  // Smooth transition of camera position and lookAt using GSAP
+
   gsap.to(camera.position, {
     duration: 1, // Transition duration in seconds
     x: targetPosition.x,
@@ -740,9 +533,60 @@ function changeMode() {
 
 
 
+function explorationView() {
+    
+  const group = boxes.filter(child => child.userData.group === currentGroup);
+  if (group.length === 0) return;
 
-  
+  // boxes.forEach(cube => cube.visible = false);
+  // parent.visible = true;
+  // parentesGroup.forEach(child => child.visible = true);
 
+
+  const boundingBox = new THREE.Box3();
+  group.forEach(cube => boundingBox.expandByObject(cube));
+  const center = new THREE.Vector3();
+  boundingBox.getCenter(center);
+  const size = boundingBox.getSize(new THREE.Vector3()).length();
+
+  const targetPosition = new THREE.Vector3();
+  const rot = new THREE.Euler();
+
+  const distance = size / (2 * Math.tan((camera.fov * Math.PI) / 360));
+  targetPosition.set(center.x, center.y, center.z + distance + 5);
+
+
+
+  if (mode === structure && explore) {
+
+    // targetPosition.set(currentGroup.position.x, currentGroup.position.y, currentGroup.position.z + 25);
+    rot.set(0, 0, 0);
+  }
+
+
+  gsap.to(camera.position, {
+    duration: 1, // Transition duration in seconds
+    x: targetPosition.x,
+    y: targetPosition.y,
+    z: targetPosition.z,
+    ease: "power2.inOut" // Smooth easing function
+  });
+
+  gsap.to(camera.rotation, {
+    duration: 1,
+    x: rot.x,
+    y: rot.y,
+    z: rot.z,
+    ease: "power2.inOut"
+  });
+
+}
+
+
+
+
+
+// structure explore helpers
 function showChildGroupsOverlay(children, parent) {
   // Example: Dynamically create an HTML overlay with the available groups
   
@@ -785,13 +629,9 @@ function showChildGroupsOverlay(children, parent) {
   document.body.appendChild(overlay);
 }
 
-
 function updateCurrentGroup(selectedChildGroup) {
   currentGroup = selectedChildGroup;  // This group is chosen by the user
 }
-
-
-
 
 function closeOverlay(overlay) {
   overlay.style.display = 'none';  // Immediate hide
@@ -799,8 +639,6 @@ function closeOverlay(overlay) {
     overlay.remove();  // Ensure removal
   }, 100);  // Delay for cleanup (short duration)
 }
-
-
 
 
 function navigateToChildren(selectedGroup, parent) {
@@ -822,7 +660,6 @@ function navigateToChildren(selectedGroup, parent) {
   targetPosition.set(center.x, center.y, center.z + distance + 5); // Extra space
   currentLookAt.copy(center);
 }
-
 
 function navigateToParent(selectedGroup) {
   const parentesGroup = boxes.filter(child => child.userData.group === selectedGroup);
@@ -847,92 +684,7 @@ function navigateToParent(selectedGroup) {
 
 
 
-
-
-
-
-
-
-
-
-function manNavigation() {
-
-  let isDragging = false;
-  let prevMousePosition = { x: 0, y: 0 };
-  
-  const canvas = document.querySelector('canvas'); 
-  
-  canvas.addEventListener('wheel', (event) => {
-    if (view === 1) {
-      camera.position.y += event.deltaY * 0.1; 
-    }
-
-    if (view === 2) {
-      camera.position.x += event.deltaY * 0.1; 
-    }
-  });
-  
-  canvas.addEventListener('mousedown', (event) => {
-    if (view === 1) {
-      isDragging = true;
-      prevMousePosition.x = event.clientX;
-      prevMousePosition.y = event.clientY;
-    }
-
-    if (view === 2) {
-      isDragging = true;
-      prevMousePosition.x = event.clientX;
-      prevMousePosition.y = event.clientY;
-    }
-  });
-  
-  canvas.addEventListener('mousemove', (event) => {
-    if (view === 1 && isDragging) {
-      console.log(view)
-      const deltaX = (event.clientX - prevMousePosition.x) * 0.1; // Adjust drag sensitivity
-      const deltaY = (event.clientY - prevMousePosition.y) * 0.1;
-  
-      // Modify camera's x and z positions based on drag
-      camera.position.x -= deltaX;
-      camera.position.z -= deltaY;
-  
-      // Update previous mouse position
-      prevMousePosition.x = event.clientX;
-      prevMousePosition.y = event.clientY;
-    }
-
-
-    if (view === 2 && isDragging) {
-      const deltaX = (event.clientX - prevMousePosition.x) * 0.1; // Adjust drag sensitivity
-      const deltaY = (event.clientY - prevMousePosition.y) * 0.1;
-  
-      // Since the plane is rotated, modify the camera's z and y positions
-      camera.position.z -= deltaX;
-      camera.position.y += deltaY;
-  
-      // Update previous mouse position
-      prevMousePosition.x = event.clientX;
-      prevMousePosition.y = event.clientY;
-    }
-  });
-  
-  canvas.addEventListener('mouseup', () => {
-    if (view === 1) isDragging = false;
-
-    if (view === 2) isDragging = false;
-  });
-  
-  canvas.addEventListener('mouseleave', () => {
-    if (view === 1) isDragging = false;
-
-    if (view === 2) isDragging = false;
-  });
-};
-
-
-
-
-
+//easing animations
 function easeInBoxes(cube) {
   cube.visible = true;
   cube.material.opacity = 0;
@@ -952,7 +704,6 @@ function easeInBoxes(cube) {
     }
   }, stepDuration);
 }
-
 
 function easeOutBoxes(cube) {
   cube.visible = true;
@@ -975,6 +726,9 @@ function easeOutBoxes(cube) {
   }, stepDuration);
 }
 
+
+
+// hovering
 function createLine(startCube, endCube, color = 0xF7E0C0) {
   const material = new THREE.LineBasicMaterial({ color });
   const geometry = new THREE.BufferGeometry().setFromPoints([
@@ -1016,8 +770,6 @@ function removeOutline(cube) {
   }
 }
 
-
-
 function removeHover(cube) {
   if (cube) {
     removeOutline(cube);
@@ -1043,6 +795,228 @@ function removeHover(cube) {
 
 
 
+
+// positions
+
+// structure
+function structurePos() {
+  setTimeout(() => {
+  
+    const levelSpacing = 25; // Distance between levels (y-axis)
+    const groupSpacing = 50; // Distance between groups within a level (x-axis)
+    const boxSpacing = 7;    // Distance between boxes within a cluster (x-axis)
+
+    // Set z-position to the front face of the big cube
+    const zFrontFace = bigCubeSize / 2;
+
+    const levels = {};
+    boxes.forEach(cube => {
+      const level = cube.userData.level;
+      if (!levels[level]) levels[level] = [];
+      levels[level].push(cube);
+    });
+
+    // Calculate the total height of all levels to center along the y-axis
+    const totalLevels = Object.keys(levels).length;
+    const totalHeight = (totalLevels - 1) * levelSpacing;
+    const centerYOffset = totalHeight / 2;
+
+    Object.keys(levels).forEach((yLevel, levelIndex) => {
+      const cubesAtLevel = levels[yLevel];
+
+      // Group cubes by their `group` value
+      const clusters = {};
+      cubesAtLevel.forEach(cube => {
+        const cluster = cube.userData.group;
+        if (!clusters[cluster]) clusters[cluster] = [];
+        clusters[cluster].push(cube);
+      });
+
+      // Calculate total width of all clusters, including box spacing
+      let totalWidth = 0;
+      Object.values(clusters).forEach((cubesInCluster) => {
+        const clusterWidth = (cubesInCluster.length - 1) * boxSpacing;
+        totalWidth += clusterWidth + groupSpacing;
+      });
+      totalWidth -= groupSpacing; // Remove the last unnecessary group spacing
+
+      const levelOffsetX = -totalWidth / 2;
+
+      let currentX = levelOffsetX;
+
+      Object.keys(clusters).forEach((clusterKey) => {
+        const cubesInCluster = clusters[clusterKey];
+
+        cubesInCluster.forEach((cube, i) => {
+          const x = currentX + i * boxSpacing;               // Spread along the x-axis
+          const y = centerYOffset - levelIndex * levelSpacing; // Spread along the y-axis
+          const z = zFrontFace;                                 // Fixed on the front face
+
+          // Animate the cube's position
+          gsap.to(cube.position, {
+            duration: 1,
+            x: x,
+            y: y,
+            z: z,
+            ease: "power2.inOut",
+          });
+        });
+
+        // Update currentX for the next cluster
+        currentX += (cubesInCluster.length - 1) * boxSpacing + groupSpacing;
+      });
+    });
+  }, 500);
+}
+
+
+function structureExplorePos() {
+  // setTimeout(() => {
+  const levelSpacing = 25; // Distance between levels on the z-axis
+  const groupSpacing = 50; // Distance between groups within a level
+  const boxSpacing = 7;    // Distance between boxes within a cluster
+
+  const levels = {};
+  boxes.forEach(cube => {
+    const level = cube.userData.level;
+    if (!levels[level]) levels[level] = [];
+    levels[level].push(cube);
+  });
+
+  Object.keys(levels).forEach((zLevel, levelIndex) => {
+    const cubesAtLevel = levels[zLevel];
+
+    // Group cubes by their `group` value
+    const clusters = {};
+    cubesAtLevel.forEach(cube => {
+      const cluster = cube.userData.group;
+      if (!clusters[cluster]) clusters[cluster] = [];
+      clusters[cluster].push(cube);
+    });
+
+    const totalWidth = Object.keys(clusters).length * groupSpacing;
+      const levelOffsetX = -totalWidth / 2;
+
+    Object.keys(clusters).forEach((clusterKey, clusterIndex) => {
+      const cubesInCluster = clusters[clusterKey];
+
+      const clusterOffsetX = levelOffsetX + clusterIndex * groupSpacing;
+
+      const cols = Math.ceil(Math.sqrt(cubesInCluster.length));
+      cubesInCluster.forEach((cube, i) => {
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+
+        const x = clusterOffsetX + col * boxSpacing;
+        const y = row * boxSpacing;
+        const z = -levelIndex * levelSpacing; // Place at the correct z-level
+
+
+        gsap.to(cube.position, {
+          duration: 1,
+          x: x,
+          y: y,
+          z: z,
+          ease: "power2.inOut",
+        });
+
+        // Set the position of the cube
+        // cube.position.set(x, y, z);
+      });
+    });
+  });
+// }, 500);
+}
+
+
+//relations
+function relationsPos() {
+setTimeout(() => {
+  
+  const groupSpacing = 50;    // Spacing between groups
+  const cloudSpread = 30;     // Spread of cubes within each group
+  const minDistance = 10;     // Minimum distance between cubes to avoid overlap
+  const maxAttempts = 20;     // Max retries to find a non-overlapping position   // Assuming the big cube has a size of 100 units
+
+  // Group cubes by their `group` value
+  const clusters = {};
+  boxes.forEach(cube => {
+    const cluster = cube.userData.group;
+    if (!clusters[cluster]) clusters[cluster] = [];
+    clusters[cluster].push(cube);
+  });
+
+  // Arrange groups in a grid layout
+  const groupKeys = Object.keys(clusters);
+  const numCols = Math.ceil(Math.sqrt(groupKeys.length));
+  const numRows = Math.ceil(groupKeys.length / numCols);
+
+  // Calculate total width and height of the grid to center the layout
+  const totalWidth = (numCols - 1) * groupSpacing;
+  const totalHeight = (numRows - 1) * groupSpacing;
+
+  // Offsets to center the grid on the left face
+  const centerZOffset = -totalWidth / 2;
+  const centerYOffset = totalHeight / 2;
+  const leftFaceX = -bigCubeSize / 2; // Position along the left face
+
+  groupKeys.forEach((clusterKey, index) => {
+    // Calculate grid position for each group (using z and y instead of x and y)
+    const col = index % numCols;
+    const row = Math.floor(index / numCols);
+    const groupZ = centerZOffset + col * groupSpacing;   // Spread groups along the z-axis
+    const groupY = centerYOffset - row * groupSpacing;   // Spread groups along the y-axis
+
+    const cubesInCluster = clusters[clusterKey];
+
+    // Position cubes within each group with collision avoidance
+    const placedPositions = []; // Store placed positions to check for collisions
+
+    cubesInCluster.forEach(cube => {
+      let validPosition = false;
+      let randomZ, randomY, randomX;
+      let attempts = 0;
+
+      while (!validPosition && attempts < maxAttempts) {
+        randomZ = groupZ + (Math.random() - 0.5) * cloudSpread;  // Random spread along z-axis //(Math.random() - 0.5) 
+        randomY = groupY + (Math.random() - 0.5) * cloudSpread;  // Random spread along y-axis
+        randomX = leftFaceX;                                      // Align on the left face
+
+        // Ensure cubes do not overlap within the group
+        validPosition = placedPositions.every(pos => {
+          const dx = pos.x - randomX;
+          const dy = pos.y - randomY;
+          const dz = pos.z - randomZ;
+          const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+          return distance >= minDistance;
+        });
+
+        attempts++;
+      }
+
+      gsap.to(cube.position, {
+        duration: 1,            // Animation duration in seconds
+        x: randomX,
+        y: randomY,
+        z: randomZ,
+        ease: "power2.inOut",   // Smooth easing function
+      });
+
+      // Save the new position to avoid overlaps
+      placedPositions.push({ x: randomX, y: randomY, z: randomZ });
+    });
+  });
+}, 500);
+}
+
+
+
+
+
+
+
+
+
   // Animation loop
   window.addEventListener('resize', function () {
     camera.aspect = window.innerWidth / window.innerHeight;
@@ -1052,11 +1026,10 @@ function removeHover(cube) {
 
   function animate() {
     requestAnimationFrame(animate);
-    if(view == 0){
+    if(explore){
       camera.position.lerp(targetPosition, 0.05);
     }
     renderer.render(scene, camera);
-    console.log(camera.rotation)
   }
   animate();
 
@@ -1197,6 +1170,6 @@ scene.add(cA);
 // // }
 
 
-updateInitPositions();
+structureExplorePos();
 
 });

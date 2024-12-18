@@ -8,12 +8,18 @@
   </head>
   <body>
     <div id="app"></div>
-    <button id="reverseButton" style="position: fixed; top: 60px; right: 20px; z-index: 10;" display="none" class = "reverse">Reverse</button>
+
+    <!-- exploration button -->
+    <button id="explore" style="position: flex; top: 20px; left: 20px; z-index: 10;" class = "roll">explore</button>
+
+    <!-- change mode buttons -->
     <div class="roll-buttons-container"></div>
       <button id="structure" style="position: flex; top: 20px; left: 20px; z-index: 10;" class = "roll">structure</button>
       <button id="relations" style="position: flex; top: 20px; left: 20px; z-index: 10;" class = "roll">relations</button>
-      <button id="explore" style="position: flex; top: 20px; left: 20px; z-index: 10;" class = "roll">explore</button>
     </div>
+
+    <!-- explore structure button -->
+    <button id="reverseButton" style="position: fixed; top: 60px; right: 20px; z-index: 10;" display="none" class = "reverse">Reverse</button>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
