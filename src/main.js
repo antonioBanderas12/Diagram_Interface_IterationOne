@@ -174,8 +174,6 @@ function enhanceBox(name, parentReferences = [], relations = [[]]) {
     
     cube.userData.boundBox = boundBox;
 
-    console.log("boundBox: ", cube.userData.boundBox)
-// Add bounding box to the raycastable objects
   });
 
 
@@ -228,7 +226,6 @@ function enhanceBox(name, parentReferences = [], relations = [[]]) {
   }
 
     scene.add(cube);
-
 
     return cube;
     
@@ -352,9 +349,9 @@ document.getElementById('relations').addEventListener('click', () => {
 
 // explore structure
   document.getElementById('explore').addEventListener('click', () => {
-    structureExplorePos();
-
-
+    
+    if(mode === structure){
+      structureExplorePos();
     setTimeout(() => {
       explorationView()
       boxes.forEach(box => box.visible = false);
@@ -369,6 +366,14 @@ document.getElementById('relations').addEventListener('click', () => {
     // boxes.filter(box => box.userData.group === !currentGroup).forEach(box => easeOutBoxes(box));
 
   }, 1500);
+} else if (mode === relations){
+  relationsExplorePos();
+  explorationView()
+
+
+
+  explore = true;
+}
 
    });
 
@@ -688,13 +693,10 @@ function changeMode() {
 
 
 function explorationView() {
-    
+  if(mode === structure){
   const group = boxes.filter(child => child.userData.group === currentGroup);
   if (group.length === 0) return;
-
-  // boxes.forEach(cube => cube.visible = false);
-  // parent.visible = true;
-  // parentesGroup.forEach(child => child.visible = true);
+  
 
 
   const boundingBox = new THREE.Box3();
@@ -733,6 +735,45 @@ function explorationView() {
     z: rot.z,
     ease: "power2.inOut"
   });
+
+
+
+
+
+} else if (mode === "relations") {
+  let relat = boxes.filter(child => child.visible === true);
+  if (relat.length === 0) return;
+
+  const boundingBox = new THREE.Box3();
+  relat.forEach(cube => boundingBox.expandByObject(cube));
+
+  const center = new THREE.Vector3();
+  boundingBox.getCenter(center);
+  const size = boundingBox.getSize(new THREE.Vector3()).length();
+
+  const distance = size / (2 * Math.tan((camera.fov * Math.PI) / 360));
+
+  const targetPosition = new THREE.Vector3(center.x + distance, center.y, center.z);
+
+  // Smoothly transition the camera position
+  gsap.to(camera.position, {
+    duration: 1, // Transition duration in seconds
+    x: targetPosition.x,
+    y: targetPosition.y,
+    z: targetPosition.z,
+    ease: "power2.inOut", // Smooth easing function
+  });
+
+  // // Optionally, you can set the camera rotation here if necessary
+  // const rot = new THREE.Euler(); // Optional: adjust rotation if needed
+  // gsap.to(camera.rotation, {
+  //   duration: 1,
+  //   x: rot.x,
+  //   y: rot.y,
+  //   z: rot.z,
+  //   ease: "power2.inOut",
+  // });
+}
 
 }
 
@@ -908,14 +949,30 @@ function removeLines(cube) {
 
 function createOutline(cube, color = 0xF7E0C0) {
   if (cube && !cube.userData.outline) {
-    const outlineMaterial = new THREE.MeshBasicMaterial({ color, side: THREE.BackSide, wireframe: true });
-    const outlineGeometry = new THREE.BoxGeometry(boxSize * 1.2, boxSize * 1.2, boxSize * 1.2); // Slightly larger box
+
+    const box = new THREE.Box3().setFromObject(cube);
+
+    // Get the dimensions of the bounding box
+    const size = new THREE.Vector3();
+    const center = new THREE.Vector3();
+    box.getSize(size);
+    box.getCenter(center);
+
+    // Create a BoxGeometry with the bounding box dimensions
+    const outlineGeometry = new THREE.BoxGeometry(size.x * 1.2, size.y * 1.2, size.z * 1.2);
+
+
+    const outlineMaterial = new THREE.MeshBasicMaterial({ color, side: THREE.BackSide, wireframe: false });
+   // const outlineGeometry = new THREE.BoxGeometry(boxSize * 1.2, boxSize * 1.2, boxSize * 1.2); // Slightly larger box
     const outlineCube = new THREE.Mesh(outlineGeometry, outlineMaterial);
     outlineCube.position.copy(cube.position);
     scene.add(outlineCube);
     cube.userData.outline = outlineCube;
   }
 }
+
+
+
 
 function removeOutline(cube) {
   if (cube && cube.userData.outline) {
@@ -1229,6 +1286,73 @@ setTimeout(() => {
 
 
 
+function relationsExplorePos() {
+  // rotation reset
+  boxes.forEach(cube => {
+    cube.rotation.set(0, - (Math.PI / 2), 0);
+  });
+ 
+    const groupCenterObject = boxes.find(cube => cube.userData.group === currentGroup);
+    if (!groupCenterObject) return;
+    groupCenterObject.position.set(0, 0, 0);  // Center position
+    const relatedObjects = [];
+
+    groupCenterObject.userData.relations.forEach(([relatedCube]) => {
+      if (relatedCube !== groupCenterObject && !relatedObjects.includes(relatedCube)) {
+        relatedObjects.push(relatedCube);
+      }
+    })
+
+    const radius = 50;  // The radius of the circle around the center
+    const angleIncrement = (2 * Math.PI) / relatedObjects.length;
+
+    relatedObjects.forEach((relatedCube, index) => {
+      const angle = angleIncrement * index;
+      const x = 0;
+      const z = radius * Math.cos(angle);
+      const y = radius * Math.sin(angle);
+
+      gsap.to(relatedCube.position, {
+        duration: 1,
+        x: x,
+        y: y,
+        z: z,
+        ease: "power2.inOut"
+      });
+    });
+
+
+    boxes.forEach(cube => {cube.visible = false});
+    groupCenterObject.visible = true;
+    relatedObjects.forEach(cube => cube.visible = true);
+
+
+
+
+    // Adjusting camera position to focus on the center object
+    // const targetPosition = new THREE.Vector3(0, 0, 100);  // Adjust the z value as needed
+    // gsap.to(camera.position, {
+    //   duration: 1,
+    //   x: targetPosition.x,
+    //   y: targetPosition.y,
+    //   z: targetPosition.z,
+    //   ease: "power2.inOut"
+    // });
+
+    // gsap.to(camera.rotation, {
+    //   duration: 1,
+    //   x: 0,
+    //   y: 0,
+    //   z: 0,
+    //   ease: "power2.inOut"
+    // });
+}
+
+
+
+
+
+
 
 
 
@@ -1241,7 +1365,7 @@ setTimeout(() => {
 
   function animate() {
     requestAnimationFrame(animate);
-    if(explore){
+    if(explore){ //mode === structure &&
       camera.position.lerp(targetPosition, 0.05);
     }
     renderer.render(scene, camera);
@@ -1718,7 +1842,10 @@ enhanceBox(tartarus, [null],[[]]);
 // //   createBox(zE, child0110, white);
 // // }
 
+setTimeout(() => {
+  
+  structureExplorePos();
 
-structureExplorePos();
+}, 1000)
 
 });
