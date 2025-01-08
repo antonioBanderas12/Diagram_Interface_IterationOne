@@ -8,6 +8,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { Group, TextureLoader } from 'three';
 import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader';
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry';
 
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -70,15 +71,40 @@ document.addEventListener('DOMContentLoaded', function() {
   let explore = true;
   let statusList = [[]];
   let boundings = [];
+  let clickedCube = null;
 
-  let mode = structure;
-  let currentGroup = null;
-  const reverseButton = document.getElementById('reverseButton');
+  // Add this at the beginning to initialize the HTML container
+  // const clickedCubeInfoContainer = document.createElement('div');
+  // clickedCubeInfoContainer.id = 'clicked-cube-info';
+  // clickedCubeInfoContainer.style.cssText = `
+  //   position: fixed;
+  //   top: 10px;
+  //   right: 10px;
+  //   background: rgba(0, 0, 0, 0.7);
+  //   color: white;
+  //   padding: 10px;
+  //   font-family: Arial, sans-serif;
+  //   font-size: 14px;
+  //   z-index: 1000;
+  // `;
+  // clickedCubeInfoContainer.innerText = 'None'; // Initial text
+  // document.body.appendChild(clickedCubeInfoContainer);
 
-  const white = 0xFFFFFF; 
-  const red = 0xFF0000;
-  const blue = 0x0000FF;
-  const green = 0x00FF00;
+
+  const clickedCubeInfoContainer = document.getElementById('clicked-cube-info');
+
+
+
+
+    let mode = structure;
+    let currentGroup = null;
+    const reverseButton = document.getElementById('reverseButton');
+
+    const white = 0xFFFFFF; 
+    const red = 0xFF0000;
+    const blue = 0x0000FF;
+    const green = 0x00FF00;
+    const black = 0x000000;
 
 
   
@@ -97,13 +123,15 @@ document.addEventListener('DOMContentLoaded', function() {
 //createBoxes
 function createBox(name, description, status, group = null) {
 
-  let colour = generateRandomColor();
-  while (statusList.some(entry => entry[1] === colour)) {
-    colour = generateRandomColor(); // Keep generating until a unique color is found
-  }
-  if (!statusList.some(entry => entry[0] === status)) {
-    statusList.push([status, colour]);
-  }
+let colour = white;
+
+  // let colour = generateRandomColor();
+  // while (statusList.some(entry => entry[1] === colour)) {
+  //   colour = generateRandomColor(); // Keep generating until a unique color is found
+  // }
+  // if (!statusList.some(entry => entry[0] === status)) {
+  //   statusList.push([status, colour]);
+  // }
 
 
 
@@ -123,6 +151,7 @@ function createBox(name, description, status, group = null) {
   cube.userData.level = 0;
   cube.userData.outline = null;
   cube.userData.boundBox = null;
+  cube.userData.colour = colour;
   // scene.add(cube);
   boxes.push(cube);
   return cube;
@@ -158,12 +187,25 @@ function enhanceBox(name, parentReferences = [], relations = [[]]) {
     cube.geometry.center();
 
     // Create bounding box
-    const boundingGeometry = new THREE.BoxGeometry(boxSize * 1.5, boxSize * 1.5, boxSize * 1.5); // Expand the size as needed
+    // const boundingGeometry = new THREE.BoxGeometry(boxSize * 1.5, boxSize * 1.5, boxSize * 1.5); // Expand the size as needed
+    // const boundingMaterial = new THREE.MeshBasicMaterial({
+    //   transparent: true,
+    //   wireframe: true,
+    //   opacity: 0,
+    // }); // Fully transparent
+    // const boundBox = new THREE.Mesh(boundingGeometry, boundingMaterial);
+    
+    const textBoundingBox = new THREE.Box3().setFromObject(cube); // Calculate bounding box for the text
+    const size = new THREE.Vector3();
+    textBoundingBox.getSize(size); // Get dimensions of the bounding box
+
+
+    const boundingGeometry = new THREE.BoxGeometry(size.x, size.y, size.z);
     const boundingMaterial = new THREE.MeshBasicMaterial({
       transparent: true,
       wireframe: true,
       opacity: 0,
-    }); // Fully transparent
+    }); // Fully transparent by default
     const boundBox = new THREE.Mesh(boundingGeometry, boundingMaterial);
 
     boundBox.position.copy(cube.position); // Match position with the cube
@@ -241,7 +283,7 @@ function enhanceBox(name, parentReferences = [], relations = [[]]) {
   raycaster.params.Mesh.threshold = 1.5; // Adjust threshold (default is 0)
   const mouse = new THREE.Vector2();
 
-  window.addEventListener('click', onClick);3
+  window.addEventListener('click', onClick);
   window.addEventListener('mousemove', onMouseMove, false);
   function onClick(event) {
     if(mode === structure && explore){
@@ -261,15 +303,15 @@ function enhanceBox(name, parentReferences = [], relations = [[]]) {
   
       if (clickedObject.userData.isBoundingBox) {
         clickedObject = clickedObject.userData.parentCube;
-        console.log("hello")
       }
 
 
     if(clickedObject.visible){
-    // if (intersects.length > 0) {
-    //   const clickedObject = intersects[0].object;
 
-    
+      updateCurrentGroup(clickedObject.userData.group)
+      clickedCube = clickedObject;
+      clickedCubeInfoContainer.innerText = `${clickedObject.userData.name || 'Unnamed Cube'}, ${clickedObject.userData.group}`;
+
 
       const children = clickedObject.userData.children;
 
@@ -292,10 +334,38 @@ function enhanceBox(name, parentReferences = [], relations = [[]]) {
         showChildGroupsOverlay(children, clickedObject);
       }
     }
-//  }
 }
+   }else{
+    
+    const rect = renderer.domElement.getBoundingClientRect();
+    mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    raycaster.setFromCamera(mouse, camera);
+  
+    //const visibleBoxes = boxes.filter(box => box.visible);
+    //const intersects = raycaster.intersectObjects(visibleBoxes);
+
+
+    const intersects = raycaster.intersectObjects(boundings);
+
+    if (intersects.length > 0) {
+      let clickedObject = intersects[0].object;
+  
+      if (clickedObject.userData.isBoundingBox) {
+        clickedObject = clickedObject.userData.parentCube;
+      }
+
+
+    if(clickedObject.visible){
+      updateCurrentGroup(clickedObject.userData.group)
+      clickedCube = clickedObject;
+      clickedCubeInfoContainer.innerText = `${clickedObject.userData.name || 'Unnamed Cube'}, ${clickedObject.userData.group}`;
+
+    }
    }
+  }
 }
+
 
 
 
@@ -339,6 +409,7 @@ document.getElementById('relations').addEventListener('click', () => {
   mode = relations;
   reverseButton.style.display = 'none';
   boxes.forEach(box => easeInBoxes(box));
+  boxes.filter(box => box.userData.relations.length < 1 && box.userData.group !== "extraElement").forEach(box => box.visible = false);
   manNavigation();
   changeMode()
   });
@@ -369,7 +440,6 @@ document.getElementById('relations').addEventListener('click', () => {
 } else if (mode === relations){
   relationsExplorePos();
   explorationView()
-
 
 
   explore = true;
@@ -458,6 +528,7 @@ document.getElementById('reverseButton').addEventListener('click', () => {
 
 //mousemove and hover
 function onMouseMove(event) {
+
   const rect = renderer.domElement.getBoundingClientRect();
   mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
   mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
@@ -473,7 +544,6 @@ function onMouseMove(event) {
     if (cube.userData.isBoundingBox) {
       cube = cube.userData.parentCube;
     }
-
     if (hoveredCube !== cube) {
       removeHover(hoveredCube);
 
@@ -491,31 +561,36 @@ function onMouseMove(event) {
 
 
 function onHover(cube) {
-
-
- //let cube = boxes.find(box => box.userData.boundBox === bound);
-// console.log("cube: ",cube)
-
   if (cube && cube.visible) {
 
    if(mode === structure && explore){
 
       if (cube.userData.children.length > 0){
        createOutline(cube);
+       cube.material.color.set(black);
+      }
+      
+      const textContainer = document.getElementById('description-container');
+      if (textContainer) {
+        textContainer.innerText = cube.userData.description; // Set the text content
+        textContainer.style.display = 'block'; // Ensure it's visible
       }
    }
 
    if (mode === structure && !explore) {
      createOutline(cube);
+     cube.material.color.set(black);
      cube.userData.children?.forEach(child => {
       if(child !== null){
        createOutline(child)
+       child.material.color.set(black);
        createLine(cube, child);
       }
    });
      cube.userData.parents?.forEach(parent => {
-       createOutline(parent)
        if(parent !== null){
+        createOutline(parent)
+        parent.material.color.set(black);
          createLine(cube, parent);
        }
    });
@@ -524,14 +599,58 @@ function onHover(cube) {
 
    if(mode === relations && !explore) {
      createOutline(cube);
-  //    cube.userData.relations?.forEach(child => {
-  //      createOutline(child)
-  //      createLine(cube, child);
-  //  });
-  cube.userData.relations?.forEach(([entity, description]) => {
+     cube.material.color.set(black);
+    cube.userData.relations?.forEach(([entity, description]) => {
+      if (entity) {
+        createOutline(entity);
+        entity.material.color.set(black);
+        createLine(cube, entity);
+      }
+    });
+  }
+  if(mode === relations && explore){
+    createOutline(cube);
+    cube.material.color.set(black);
+    cube.userData.relations?.forEach(([entity, description]) => {
+      if (entity) {
       createOutline(entity);
-      createLine(cube, entity);
-  });
+      entity.material.color.set(black);
+      if(entity.visible && cube.visible){
+        createLine(cube, entity);
+      }
+    }
+
+
+    // Display the description as an HTML element
+      const textContainer = document.getElementById('description-container');
+      // if (textContainer) {
+      //   textContainer.innerText = description; // Set the text content
+      //   textContainer.style.display = 'block'; // Ensure it's visible
+      // }
+
+
+      if (textContainer) {
+        textContainer.innerHTML = ''; // Clear existing content
+        cube.userData.relations?.forEach(([entity, description]) => {
+          if(entity.visible){
+          createOutline(entity);
+          if (entity.visible && cube.visible) {
+            createLine(cube, entity);
+          }
+    
+          // Append each description as a separate line
+          const descriptionElement = document.createElement('div');
+          descriptionElement.innerText = description;
+          textContainer.appendChild(descriptionElement);
+        }
+        });
+    
+        textContainer.style.display = 'block'; // Ensure it's visible
+      }
+
+    })
+
+  
   }
 
 
@@ -740,39 +859,28 @@ function explorationView() {
 
 
 
-} else if (mode === "relations") {
+} else if (mode === relations) {
+setTimeout(() => {
   let relat = boxes.filter(child => child.visible === true);
   if (relat.length === 0) return;
 
   const boundingBox = new THREE.Box3();
   relat.forEach(cube => boundingBox.expandByObject(cube));
-
   const center = new THREE.Vector3();
   boundingBox.getCenter(center);
   const size = boundingBox.getSize(new THREE.Vector3()).length();
-
   const distance = size / (2 * Math.tan((camera.fov * Math.PI) / 360));
+  let targetPos = new THREE.Vector3(center.x - distance, center.y, center.z);
 
-  const targetPosition = new THREE.Vector3(center.x + distance, center.y, center.z);
-
-  // Smoothly transition the camera position
+  //Smoothly transition the camera position
   gsap.to(camera.position, {
     duration: 1, // Transition duration in seconds
-    x: targetPosition.x,
-    y: targetPosition.y,
-    z: targetPosition.z,
+    x: targetPos.x,
+    y: targetPos.y,
+    z: targetPos.z,
     ease: "power2.inOut", // Smooth easing function
   });
-
-  // // Optionally, you can set the camera rotation here if necessary
-  // const rot = new THREE.Euler(); // Optional: adjust rotation if needed
-  // gsap.to(camera.rotation, {
-  //   duration: 1,
-  //   x: rot.x,
-  //   y: rot.y,
-  //   z: rot.z,
-  //   ease: "power2.inOut",
-  // });
+}, 1000)
 }
 
 }
@@ -947,27 +1055,151 @@ function removeLines(cube) {
   }
 }
 
+// function createOutline(cube, color = 0xF7E0C0) {
+//   if (cube && !cube.userData.outline) {
+
+//     const box = new THREE.Box3().setFromObject(cube);
+
+//     // Get the dimensions of the bounding box
+//     const size = new THREE.Vector3();
+//     const center = new THREE.Vector3();
+//     box.getSize(size);
+//     box.getCenter(center);
+
+//     // Create a BoxGeometry with the bounding box dimensions
+//     const outlineGeometry = new THREE.BoxGeometry(size.x * 1.2, size.y * 1.2, size.z * 1.2);
+
+//     const outlineMaterial = new THREE.MeshBasicMaterial({ color, side: THREE.BackSide, wireframe: true });
+//    // const outlineGeometry = new THREE.BoxGeometry(boxSize * 1.2, boxSize * 1.2, boxSize * 1.2); // Slightly larger box
+//     const outlineCube = new THREE.Mesh(outlineGeometry, outlineMaterial);
+//     outlineCube.position.copy(cube.position);
+//     scene.add(outlineCube);
+//     cube.userData.outline = outlineCube;
+//   }
+// }
+
+
+
+
+// function createOutline(cube, color = 0xF7E0C0) {
+//   if (cube && !cube.userData.outline) {
+
+//     const box = new THREE.Box3().setFromObject(cube);
+
+//     // Get the dimensions of the bounding box
+//     const size = new THREE.Vector3();
+//     const center = new THREE.Vector3();
+//     box.getSize(size);
+//     box.getCenter(center);
+
+//     // Create a rounded BoxGeometry
+//     const roundedRadius = Math.min(size.x, size.y, size.z) * 1.5; // Adjust radius for rounding
+//     const outlineGeometry = new THREE.BoxGeometry(size.x * 1.2, size.y * 1.2, size.z * 1.2, 10, 10, 10); // Add segments for smooth corners
+//     const outlineMaterial = new THREE.MeshBasicMaterial({
+//       color,
+//       side: THREE.BackSide,
+//       transparent: true,
+//       opacity: 0.5, // Make it slightly transparent
+//     });
+
+//     // Create the outline mesh
+//     const outlineCube = new THREE.Mesh(outlineGeometry, outlineMaterial);
+//     outlineCube.position.copy(cube.position);
+//     scene.add(outlineCube);
+
+//     // Save the outline for later removal
+//     cube.userData.outline = outlineCube;
+
+//     // Add glow or extra effect if desired
+//     // const glowMaterial = new THREE.MeshBasicMaterial({
+//     //   color,
+//     //   transparent: true,
+//     //   opacity: 0.2,
+//     // });
+//     // const glowGeometry = new THREE.BoxGeometry(size.x * 1.4, size.y * 1.4, size.z * 1.4);
+//     // const glowCube = new THREE.Mesh(glowGeometry, glowMaterial);
+//     // glowCube.position.copy(cube.position);
+//     // scene.add(glowCube);
+//     // cube.userData.glow = glowCube;
+//   }
+// }
+
+
+
+// function createOutline(cube, color = 0xF7E0C0) {
+//   if (cube && !cube.userData.outline) {
+//     const box = new THREE.Box3().setFromObject(cube);
+
+//     // Get the dimensions of the bounding box
+//     const size = new THREE.Vector3();
+//     const center = new THREE.Vector3();
+//     box.getSize(size);
+//     box.getCenter(center);
+
+//     // Create Rounded BoxGeometry
+//     const roundedRadius = 50//Math.min(size.x, size.y, size.z) * 200; // Radius for rounded edges
+//     const outlineGeometry = new RoundedBoxGeometry(
+//       size.x * 1.2,
+//       size.y * 1.2,
+//       size.z * 1.2,
+//       roundedRadius,
+//       8 // Number of segments for smooth rounding
+//     );
+
+//     const outlineMaterial = new THREE.MeshBasicMaterial({
+//       color,
+//       side: THREE.BackSide,
+//       transparent: true,
+//       opacity: 0.5,
+//     });
+
+//     const outlineMesh = new THREE.Mesh(outlineGeometry, outlineMaterial);
+//     outlineMesh.position.copy(cube.position);
+//     scene.add(outlineMesh);
+
+//     // Save the outline for later removal
+//     cube.userData.outline = outlineMesh;
+//   }
+// }
+
+
 function createOutline(cube, color = 0xF7E0C0) {
   if (cube && !cube.userData.outline) {
+    const box =  new THREE.Box3().setFromObject(cube);
 
-    const box = new THREE.Box3().setFromObject(cube);
-
+    let factor = 0
     // Get the dimensions of the bounding box
     const size = new THREE.Vector3();
     const center = new THREE.Vector3();
     box.getSize(size);
     box.getCenter(center);
 
-    // Create a BoxGeometry with the bounding box dimensions
-    const outlineGeometry = new THREE.BoxGeometry(size.x * 1.2, size.y * 1.2, size.z * 1.2);
+    if(mode === structure){
+      factor = size.x
+    }else if(mode === relations){
+      factor = size.z
+    }
+    const outlineGeometry = new THREE.CircleGeometry(factor / 1.8);
 
+    const outlineMaterial = new THREE.MeshBasicMaterial({
+      color,
+      transparent: false,
+      opacity: 1,
+    });
 
-    const outlineMaterial = new THREE.MeshBasicMaterial({ color, side: THREE.BackSide, wireframe: false });
-   // const outlineGeometry = new THREE.BoxGeometry(boxSize * 1.2, boxSize * 1.2, boxSize * 1.2); // Slightly larger box
-    const outlineCube = new THREE.Mesh(outlineGeometry, outlineMaterial);
-    outlineCube.position.copy(cube.position);
-    scene.add(outlineCube);
-    cube.userData.outline = outlineCube;
+    const outlineMesh = new THREE.Mesh(outlineGeometry, outlineMaterial);
+    outlineMesh.position.copy(cube.position);
+    scene.add(outlineMesh);
+
+    // Save the outline for later removal
+    cube.userData.outline = outlineMesh;
+
+    if (mode === structure){
+      outlineMesh.rotation.set(0, 0, 0);
+    }
+    else if(mode === relations){
+      outlineMesh.rotation.set(0, - (Math.PI / 2), 0);
+    }
   }
 }
 
@@ -984,24 +1216,38 @@ function removeOutline(cube) {
 function removeHover(cube) {
   if (cube) {
     removeOutline(cube);
-    
+    cube.material.color.set(cube.userData.colour);
     removeLines(cube);
 
     cube.userData.children?.forEach(child => {
-      removeOutline(child)
-      removeLines(child);
+      if(child){
+        removeOutline(child)
+        child.material.color.set(cube.userData.colour);
+        removeLines(child);
+      }
   });
     cube.userData.parents?.forEach(parent => {
-      removeOutline(parent)
-      removeLines(parent);
+      if(parent){
+        removeOutline(parent)
+        parent.material.color.set(cube.userData.colour);
+        removeLines(parent);
+      }
   });
 
   cube.userData.relations?.forEach(([entity, description]) => {
     if (entity) {
       removeOutline(entity);
+      entity.material.color.set(cube.userData.colour);
       removeLines(entity);
     }
   });
+
+  //text container
+    const textContainer = document.getElementById('description-container');
+    if (textContainer) {
+      textContainer.style.display = 'none';
+      textContainer.innerText = ''; // Clear the content
+    }
   
   }
 }
@@ -1018,6 +1264,7 @@ function structurePos() {
 //rotation
     boxes.forEach(cube => {
       cube.rotation.set(0, 0, 0);
+      cube.userData.boundBox.rotation.set(0, 0, 0);
     });
   
 
@@ -1116,6 +1363,8 @@ function structureExplorePos() {
 //rotation
 boxes.forEach(cube => {
   cube.rotation.set(0, 0, 0);
+  cube.userData.boundBox.rotation.set(0, 0, 0);
+
 });
 
 
@@ -1195,6 +1444,8 @@ setTimeout(() => {
   // roteteCubes
   boxes.forEach(cube => {
     cube.rotation.set(0, - (Math.PI / 2), 0);
+    cube.userData.boundBox.rotation.set(0, - (Math.PI / 2), 0);
+
   });
 
 
@@ -1290,9 +1541,15 @@ function relationsExplorePos() {
   // rotation reset
   boxes.forEach(cube => {
     cube.rotation.set(0, - (Math.PI / 2), 0);
+    cube.userData.boundBox.rotation.set(0, - (Math.PI / 2), 0);
   });
  
-    const groupCenterObject = boxes.find(cube => cube.userData.group === currentGroup);
+    //const groupCenterObject = boxes.find(cube => cube.userData.group === currentGroup);
+
+    const groupCenterObject = clickedCube;
+
+
+
     if (!groupCenterObject) return;
     groupCenterObject.position.set(0, 0, 0);  // Center position
     const relatedObjects = [];
@@ -1317,35 +1574,18 @@ function relationsExplorePos() {
         x: x,
         y: y,
         z: z,
-        ease: "power2.inOut"
+        ease: "power2.inOut",
+        onUpdate: () => {
+          boxes.forEach(box => {
+           box.userData.boundBox.position.copy(box.position);
+          })   
+        } 
       });
     });
-
 
     boxes.forEach(cube => {cube.visible = false});
     groupCenterObject.visible = true;
     relatedObjects.forEach(cube => cube.visible = true);
-
-
-
-
-    // Adjusting camera position to focus on the center object
-    // const targetPosition = new THREE.Vector3(0, 0, 100);  // Adjust the z value as needed
-    // gsap.to(camera.position, {
-    //   duration: 1,
-    //   x: targetPosition.x,
-    //   y: targetPosition.y,
-    //   z: targetPosition.z,
-    //   ease: "power2.inOut"
-    // });
-
-    // gsap.to(camera.rotation, {
-    //   duration: 1,
-    //   x: 0,
-    //   y: 0,
-    //   z: 0,
-    //   ease: "power2.inOut"
-    // });
 }
 
 
@@ -1365,7 +1605,7 @@ function relationsExplorePos() {
 
   function animate() {
     requestAnimationFrame(animate);
-    if(explore){ //mode === structure &&
+    if(mode === structure && explore){ //mode === structure &&
       camera.position.lerp(targetPosition, 0.05);
     }
     renderer.render(scene, camera);

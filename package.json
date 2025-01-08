@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "gsap": "^3.12.5",
-    "three": "^0.170.0"
+    "three": "^0.170.0",
+    "three-rounded-box": "^0.1.1"
   }
 }
