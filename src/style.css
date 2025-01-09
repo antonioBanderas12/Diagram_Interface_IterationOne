@@ -95,6 +95,38 @@ button:focus-visible {
 }
 
 
+#roll-buttons-container {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  align-items: center;
+}
+
+#explore {
+  display: none; /* Initially hidden */
+  top: calc(20px + 40px); /* Adjust as per the roll buttons height */
+  left: 50%;
+  transform: translateX(-50%);
+  transition: top 0.3s ease; /* Smooth transition */
+}
+
+
+/* 
+
+.current {
+
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: #1a1a1a;
+  cursor: pointer;
+  transition: border-color 0.25s;
+} */
+
+
 .overlay {
   position: fixed;
   bottom: 0;
