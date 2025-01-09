@@ -2,7 +2,7 @@ import './style.css';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { gsap } from "gsap";
-import * as functions from './functions.js';
+//import * as functions from './functions.js';
 
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { Group, TextureLoader } from 'three';
@@ -72,25 +72,6 @@ document.addEventListener('DOMContentLoaded', function() {
   let statusList = [[]];
   let boundings = [];
   let clickedCube = null;
-
-  // Add this at the beginning to initialize the HTML container
-  // const clickedCubeInfoContainer = document.createElement('div');
-  // clickedCubeInfoContainer.id = 'clicked-cube-info';
-  // clickedCubeInfoContainer.style.cssText = `
-  //   position: fixed;
-  //   top: 10px;
-  //   right: 10px;
-  //   background: rgba(0, 0, 0, 0.7);
-  //   color: white;
-  //   padding: 10px;
-  //   font-family: Arial, sans-serif;
-  //   font-size: 14px;
-  //   z-index: 1000;
-  // `;
-  // clickedCubeInfoContainer.innerText = 'None'; // Initial text
-  // document.body.appendChild(clickedCubeInfoContainer);
-
-
   const clickedCubeInfoContainer = document.getElementById('clicked-cube-info');
 
 
@@ -121,7 +102,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 //createBoxes
-function createBox(name, description, status, group = null) {
+function createBox(name, description, status) {
 
 let colour = white;
 
@@ -141,7 +122,11 @@ let colour = white;
 
 
 
-  cube.userData.group = group;
+  //cube.userData.group = group;
+
+  cube.userData.group = null;
+
+
   cube.userData.children = [];
   cube.userData.parents = [];
   cube.userData.name = name;
@@ -185,22 +170,13 @@ function enhanceBox(name, parentReferences = [], relations = [[]]) {
     cube.material.transparent = false;
     cube.material.wireframe = false; 
     cube.geometry.center();
-
-    // Create bounding box
-    // const boundingGeometry = new THREE.BoxGeometry(boxSize * 1.5, boxSize * 1.5, boxSize * 1.5); // Expand the size as needed
-    // const boundingMaterial = new THREE.MeshBasicMaterial({
-    //   transparent: true,
-    //   wireframe: true,
-    //   opacity: 0,
-    // }); // Fully transparent
-    // const boundBox = new THREE.Mesh(boundingGeometry, boundingMaterial);
     
     const textBoundingBox = new THREE.Box3().setFromObject(cube); // Calculate bounding box for the text
     const size = new THREE.Vector3();
     textBoundingBox.getSize(size); // Get dimensions of the bounding box
 
 
-    const boundingGeometry = new THREE.BoxGeometry(size.x, size.y, size.z);
+    const boundingGeometry = new THREE.BoxGeometry(size.x *1.5, size.y *1.5, size.z *1.5);
     const boundingMaterial = new THREE.MeshBasicMaterial({
       transparent: true,
       wireframe: true,
@@ -219,9 +195,19 @@ function enhanceBox(name, parentReferences = [], relations = [[]]) {
   });
 
 
-
+  // if(parentReferences.length < 1){
+  //   cube.userData.parents = [cA];
+  // }else{
+  //   cube.userData.parents = parentReferences;
+  // }
 
     cube.userData.parents = parentReferences;
+
+    //group
+    const parentReferencesString = parentReferences.map(parent => parent?.userData?.name || 'extraElement').join(', ');
+    cube.userData.group = parentReferencesString;
+
+    //z-levels
 
     let zLevel = 0;
     if (parentReferences === null) {
@@ -325,7 +311,6 @@ function enhanceBox(name, parentReferences = [], relations = [[]]) {
       if(children.length === 0) return;
 
       if (groupBoxes.length  === 1) {
-        console.log("Single Child");
         currentGroup = children[0].userData.group;
         navigateToChildren(currentGroup, clickedObject);
         return;
@@ -409,7 +394,7 @@ document.getElementById('relations').addEventListener('click', () => {
   mode = relations;
   reverseButton.style.display = 'none';
   boxes.forEach(box => easeInBoxes(box));
-  boxes.filter(box => box.userData.relations.length < 1 && box.userData.group !== "extraElement").forEach(box => box.visible = false);
+  boxes.filter(box => box.userData.relations.length < 1 ).forEach(box => box.visible = false); //&& box.userData.group !== "extraElement"
   manNavigation();
   changeMode()
   });
@@ -423,11 +408,11 @@ document.getElementById('relations').addEventListener('click', () => {
     
     if(mode === structure){
       structureExplorePos();
-    setTimeout(() => {
-      explorationView()
-      boxes.forEach(box => box.visible = false);
-      boxes.filter(box => box.userData.group === currentGroup && box.userData.group !== "extraElement").forEach(box => box.visible = true);
-    }, 1000);
+      setTimeout(() => {
+        explorationView()
+        boxes.forEach(box => box.visible = false);
+        boxes.filter(box => box.userData.group === currentGroup && (box.userData.group !== "extraElement")).forEach(box => box.visible = true);
+      }, 1000);
 
     setTimeout(() => {
       
@@ -468,9 +453,11 @@ document.getElementById('reverseButton').addEventListener('click', () => {
   let groupBoxes = boxes.filter(box => box.userData.group === currentGroup);
   groupBoxes.forEach(box => {
     box.userData.parents.forEach(parent => {
+      if(parent !== null){
       if (!parentGroups.includes(parent.userData.group)) {
         parentGroups.push(parent.userData.group);
       }
+    } else return;
     });
   });
 
@@ -505,7 +492,7 @@ document.getElementById('reverseButton').addEventListener('click', () => {
 
   parentGroups.forEach(group => {
     const groupButton = document.createElement('button');
-    groupButton.textContent = `Group ${group}`;  // Display the group number or name
+    groupButton.textContent = `Parents: ${group}`;  // Display the group number or name
     groupButton.addEventListener('click', () => {
       event.stopPropagation();
       closeOverlay(overlay);
@@ -572,7 +559,7 @@ function onHover(cube) {
       
       const textContainer = document.getElementById('description-container');
       if (textContainer) {
-        textContainer.innerText = cube.userData.description; // Set the text content
+        textContainer.innerText = cube.userData.name + ': ' + cube.userData.description; // Set the text content
         textContainer.style.display = 'block'; // Ensure it's visible
       }
    }
@@ -640,7 +627,7 @@ function onHover(cube) {
     
           // Append each description as a separate line
           const descriptionElement = document.createElement('div');
-          descriptionElement.innerText = description;
+          descriptionElement.innerText = entity.userData.name + ': ' + description;
           textContainer.appendChild(descriptionElement);
         }
         });
@@ -870,7 +857,7 @@ setTimeout(() => {
   boundingBox.getCenter(center);
   const size = boundingBox.getSize(new THREE.Vector3()).length();
   const distance = size / (2 * Math.tan((camera.fov * Math.PI) / 360));
-  let targetPos = new THREE.Vector3(center.x - distance, center.y, center.z);
+  let targetPos = new THREE.Vector3(center.x - distance, center.y-10, center.z);
 
   //Smoothly transition the camera position
   gsap.to(camera.position, {
@@ -918,7 +905,7 @@ function showChildGroupsOverlay(children, parent) {
 
   posGroups.forEach(group => {
     const groupButton = document.createElement('button');
-    groupButton.textContent = `Group ${group}`;  // Display the group number or name
+    groupButton.textContent = `Parents: ${group}`;  // Display the group number or name
     // groupButton.removeEventListener('click', previousHandler);
     groupButton.addEventListener('click', () => {
       event.stopPropagation();
@@ -1055,113 +1042,6 @@ function removeLines(cube) {
   }
 }
 
-// function createOutline(cube, color = 0xF7E0C0) {
-//   if (cube && !cube.userData.outline) {
-
-//     const box = new THREE.Box3().setFromObject(cube);
-
-//     // Get the dimensions of the bounding box
-//     const size = new THREE.Vector3();
-//     const center = new THREE.Vector3();
-//     box.getSize(size);
-//     box.getCenter(center);
-
-//     // Create a BoxGeometry with the bounding box dimensions
-//     const outlineGeometry = new THREE.BoxGeometry(size.x * 1.2, size.y * 1.2, size.z * 1.2);
-
-//     const outlineMaterial = new THREE.MeshBasicMaterial({ color, side: THREE.BackSide, wireframe: true });
-//    // const outlineGeometry = new THREE.BoxGeometry(boxSize * 1.2, boxSize * 1.2, boxSize * 1.2); // Slightly larger box
-//     const outlineCube = new THREE.Mesh(outlineGeometry, outlineMaterial);
-//     outlineCube.position.copy(cube.position);
-//     scene.add(outlineCube);
-//     cube.userData.outline = outlineCube;
-//   }
-// }
-
-
-
-
-// function createOutline(cube, color = 0xF7E0C0) {
-//   if (cube && !cube.userData.outline) {
-
-//     const box = new THREE.Box3().setFromObject(cube);
-
-//     // Get the dimensions of the bounding box
-//     const size = new THREE.Vector3();
-//     const center = new THREE.Vector3();
-//     box.getSize(size);
-//     box.getCenter(center);
-
-//     // Create a rounded BoxGeometry
-//     const roundedRadius = Math.min(size.x, size.y, size.z) * 1.5; // Adjust radius for rounding
-//     const outlineGeometry = new THREE.BoxGeometry(size.x * 1.2, size.y * 1.2, size.z * 1.2, 10, 10, 10); // Add segments for smooth corners
-//     const outlineMaterial = new THREE.MeshBasicMaterial({
-//       color,
-//       side: THREE.BackSide,
-//       transparent: true,
-//       opacity: 0.5, // Make it slightly transparent
-//     });
-
-//     // Create the outline mesh
-//     const outlineCube = new THREE.Mesh(outlineGeometry, outlineMaterial);
-//     outlineCube.position.copy(cube.position);
-//     scene.add(outlineCube);
-
-//     // Save the outline for later removal
-//     cube.userData.outline = outlineCube;
-
-//     // Add glow or extra effect if desired
-//     // const glowMaterial = new THREE.MeshBasicMaterial({
-//     //   color,
-//     //   transparent: true,
-//     //   opacity: 0.2,
-//     // });
-//     // const glowGeometry = new THREE.BoxGeometry(size.x * 1.4, size.y * 1.4, size.z * 1.4);
-//     // const glowCube = new THREE.Mesh(glowGeometry, glowMaterial);
-//     // glowCube.position.copy(cube.position);
-//     // scene.add(glowCube);
-//     // cube.userData.glow = glowCube;
-//   }
-// }
-
-
-
-// function createOutline(cube, color = 0xF7E0C0) {
-//   if (cube && !cube.userData.outline) {
-//     const box = new THREE.Box3().setFromObject(cube);
-
-//     // Get the dimensions of the bounding box
-//     const size = new THREE.Vector3();
-//     const center = new THREE.Vector3();
-//     box.getSize(size);
-//     box.getCenter(center);
-
-//     // Create Rounded BoxGeometry
-//     const roundedRadius = 50//Math.min(size.x, size.y, size.z) * 200; // Radius for rounded edges
-//     const outlineGeometry = new RoundedBoxGeometry(
-//       size.x * 1.2,
-//       size.y * 1.2,
-//       size.z * 1.2,
-//       roundedRadius,
-//       8 // Number of segments for smooth rounding
-//     );
-
-//     const outlineMaterial = new THREE.MeshBasicMaterial({
-//       color,
-//       side: THREE.BackSide,
-//       transparent: true,
-//       opacity: 0.5,
-//     });
-
-//     const outlineMesh = new THREE.Mesh(outlineGeometry, outlineMaterial);
-//     outlineMesh.position.copy(cube.position);
-//     scene.add(outlineMesh);
-
-//     // Save the outline for later removal
-//     cube.userData.outline = outlineMesh;
-//   }
-// }
-
 
 function createOutline(cube, color = 0xF7E0C0) {
   if (cube && !cube.userData.outline) {
@@ -1271,7 +1151,7 @@ function structurePos() {
 //levelSpacing
     const levelSpacing = 25; // Distance between levels (y-axis)
     const groupSpacing = 50; // Distance between groups within a level (x-axis)
-    const boxSpacing = 7;    // Distance between boxes within a cluster (x-axis)
+    const boxSpacing = 15;    // Distance between boxes within a cluster (x-axis)
 
     // Set z-position to the front face of the big cube
     const zFrontFace = bigCubeSize / 2;
@@ -1358,7 +1238,7 @@ function structureExplorePos() {
   // setTimeout(() => {
   const levelSpacing = 25; // Distance between levels on the z-axis
   const groupSpacing = 50; // Distance between groups within a level
-  const boxSpacing = 7;    // Distance between boxes within a cluster
+  const boxSpacing = 15;    // Distance between boxes within a cluster
 
 //rotation
 boxes.forEach(cube => {
@@ -1451,7 +1331,7 @@ setTimeout(() => {
 
   const groupSpacing = 50;    // Spacing between groups
   const cloudSpread = 30;     // Spread of cubes within each group
-  const minDistance = 10;     // Minimum distance between cubes to avoid overlap
+  const minDistance = 15;     // Minimum distance between cubes to avoid overlap
   const maxAttempts = 20;     // Max retries to find a non-overlapping position   // Assuming the big cube has a size of 100 units
 
   // Group cubes by their `group` value
@@ -1653,69 +1533,482 @@ function relationsExplorePos() {
 
 
 
-
+//ca
 const cA = createBox(
   "cA",
   "",
-  "0",
-  ""
+  "0"
 );
+
+
+
+
+
+
+
+
 
 const chaos = createBox(
   "Chaos",
   "The primeval void from which everything in existence sprang. Represents the initial state of emptiness before creation.",
-  "1",
-  "1"
+  "Immortal"
 );
 
 const gaia = createBox(
   "Gaia",
   "Personification of the Earth and the mother of all life. She gave birth to the Titans, giants, and other primordial beings.",
-  "2",
-  "Uranus, Pontus"
-);
-
-
-
-const nyx = createBox(
-  "Nyx",
-  "",
-  "3",
-  "extraElement",
+  "Immortal"
 );
 
 const uranus = createBox(
-  "uranus",
-  "",
-  "3",
-  "extraElement",
+  "Uranus",
+  "Personification of the sky and the heavens. Known for fathering the Titans with Gaia.",
+  "Immortal"
+);
+
+const cronus = createBox(
+  "Cronus",
+  "The youngest of the Titans who overthrew his father Uranus. Known as the god of time and the harvest.",
+  "Immortal"
+);
+
+const rhea = createBox(
+  "Rhea",
+  "Titaness of fertility, motherhood, and generation. Known as the mother of the Olympian gods.",
+  "Immortal"
+);
+
+const nyx = createBox(
+  "Nyx",
+  "Primordial goddess of the night. Known for her power and mysterious nature.",
+  "Immortal"
+);
+
+const erebus = createBox(
+  "Erebus",
+  "Primordial deity representing darkness and shadow. One of the first entities to emerge from Chaos.",
+  "Immortal"
 );
 
 const tartarus = createBox(
-  "tartarus",
+  "Tartarus",
+  "Primordial deity and the deep abyss used as a dungeon for the Titans and a place of punishment.",
+  "Immortal"
+);
+
+const pontus = createBox(
+  "Pontus",
+  "Primordial god of the sea. Represents the seas before Poseidon.",
+  "Immortal"
+);
+
+const zeus = createBox(
+  "Zeus", 
+  "King of the gods, ruler of Mount Olympus, and god of the sky, weather, law, and order. Known for his thunderbolt and numerous affairs with mortals and goddesses.", 
+  "Immortal"
+);
+
+const hera = createBox(
+  "Hera", 
+  "Queen of the gods and goddess of marriage, women, childbirth, and family. Known for her jealousy and protection of married women.", 
+  "Immortal"
+);
+
+const poseidon = createBox(
+  "Poseidon", 
+  "God of the sea, earthquakes, storms, and horses. Known for his volatile temperament and rivalry with other gods.", 
+  "Immortal"
+);
+
+const hades = createBox(
+  "Hades", 
+  "God of the underworld and the dead. Rules over the souls of the departed and guards the treasures of the earth.", 
+  "Immortal"
+);
+
+const athena = createBox(
+  "Athena", 
+  "Goddess of wisdom, war, strategy, and crafts. Known for her intelligence, fairness, and role as a protector of cities.", 
+  "Immortal"
+);
+
+const aphrodite = createBox(
+  "Aphrodite", 
+  "Goddess of love, beauty, pleasure, and desire. Born from the sea foam and known for her irresistible charm.", 
+  "Immortal"
+);
+
+const heracles = createBox(
+  "Heracles", 
+  "Demigod hero known for his extraordinary strength and courage. Famous for completing the Twelve Labors.", 
+  "Demigod"
+);
+
+const achilles = createBox(
+  "Achilles", 
+  "Greek hero of the Trojan War, renowned for his strength, bravery, and near invincibility, except for his heel.", 
+  "Mortal"
+);
+
+const odysseus = createBox(
+  "Odysseus", 
+  "King of Ithaca, famed for his cunning intellect and resourcefulness. Hero of the Odyssey and the Trojan War.", 
+  "Mortal"
+);
+
+const nereus = createBox(
+  "Nereus",
+  "Primordial sea god known as the 'Old Man of the Sea.' Renowned for his truthfulness and gift of prophecy.",
+  "Immortal"
+);
+
+const circe = createBox(
+  "Circe",
+  "Enchantress and sorceress, known for her ability to transform men into animals. Encountered by Odysseus during his travels.",
+  "Mortal"
+);
+
+const apollo = createBox(
+  "Apollo",
+  "God of the sun, music, poetry, prophecy, and healing. Known for his beauty and wisdom.",
+  "Immortal"
+);
+
+const ares = createBox(
+  "Ares",
+  "God of war and violence. Known for his bloodlust and quick temper.",
+  "Immortal"
+);
+
+
+// helpers
+const alcmene = createBox(
+  "alcmene",
   "",
-  "3",
-  "extraElement",
+  "helperElement"
+);
+
+const peleus = createBox(
+  "peleus",
+  "",
+  "helperElement"
+);
+
+const thetis = createBox(
+  "thetis",
+  "",
+  "helperElement"
+);
+
+const laertes = createBox(
+  "laertes",
+  "",
+  "helperElement"
+);
+
+const anticleia = createBox(
+  "anticleia",
+  "",
+  "helperElement"
+);
+
+const helios = createBox(
+  "helios",
+  "",
+  "helperElement"
+);
+
+const hector = createBox(
+  "hector",
+  "",
+  "helperElement"
+);
+
+
+const eurystheus = createBox(
+  "eurystheus",
+  "",
+  "helperElement"
+);
+
+const patroclus = createBox(
+  "patroclus",
+  "",
+  "helperElement"
+);
+
+const agamemnon = createBox(
+  "agamemnon",
+  "",
+  "helperElement"
+);
+
+const leto = createBox(
+  "leto",
+  "",
+  "helperElement"
+);
+
+const cerberus = createBox(
+  "cerberus",
+  "",
+  "helperElement"
+);
+
+const pygmalion = createBox(
+  "pygmalion",
+  "",
+  "helperElement"
+);
+
+const arachne = createBox(
+  "arachne",
+  "",
+  "helperElement"
+);
+
+const orpheus = createBox(
+  "orpheus",
+  "",
+  "helperElement"
+);
+
+const persephone = createBox(
+  "persephone",
+  "",
+  "helperElement"
+);
+
+const paris = createBox(
+  "paris",
+  "",
+  "helperElement"
+);
+
+const daphne = createBox(
+  "daphne",
+  "",
+  "helperElement"
+);
+
+const asclepius = createBox(
+  "asclepius",
+  "",
+  "helperElement"
 );
 
 
 
-enhanceBox(cA, [null],[[]]);
+
+
 
 enhanceBox(chaos, [cA], [
+  [gaia, "Brought forth Gaia, who personifies the Earth and gives structure to the cosmos."],
   [nyx, "Generated Nyx, the goddess of night, who embodies the darkness of the void."]
-])
+]);
 
 enhanceBox(gaia, [chaos], [
-    [uranus, "Worked with Uranus to create the first generations of Titans and orchestrated his downfall when he imprisoned their children."]
-     ,[nyx, "Generated Nyx, the goddess of night, who embodies the darkness of the void."]
-])
+  [uranus, "Worked with Uranus to create the first generations of Titans and orchestrated his downfall when he imprisoned their children."],
+  [tartarus, "Conspired with Tartarus to imprison the giants and other rebellious beings."]
+]);
 
-enhanceBox(nyx, [null],[[]]);
+enhanceBox(uranus, [gaia], [
+  [cronus, "Was overthrown and castrated by his son Cronus, fulfilling a prophecy foretold by Gaia."]
+]);
 
-enhanceBox(uranus, [null],[[]]);
+enhanceBox(cronus, [uranus, gaia], [
+  [zeus, "Was defeated by Zeus in the Titanomachy, the great war between the Titans and the Olympian gods."],
+  [rhea, "Tricked by Rhea into swallowing a stone instead of Zeus, which led to his eventual downfall."]
+]);
 
-enhanceBox(tartarus, [null],[[]]);
+enhanceBox(rhea, [uranus, gaia], [
+  [zeus, "Saved Zeus from being swallowed by Cronus by hiding him on Crete and later helped him overthrow Cronus."]
+]);
+
+enhanceBox(nyx, [chaos], [
+  [erebus, "Together with Erebus, she gave birth to many deities representing cosmic forces, such as Hypnos and Thanatos."],
+  [zeus, "Even Zeus, the king of the gods, feared her immense power and mystery."]
+]);
+
+enhanceBox(erebus, [chaos], [
+  [nyx, "Partnered with Nyx to produce deities of sleep, death, and other abstract forces."]
+]);
+
+enhanceBox(tartarus, [chaos], [
+  [zeus, "Provided a prison for Zeus to imprison the defeated Titans after the Titanomachy."]
+]);
+
+enhanceBox(pontus, [gaia], [
+  [nereus, "Fathered Nereus, the wise 'Old Man of the Sea,' known for his truthfulness and prophetic abilities."]
+]);
+
+enhanceBox(zeus, [cronus, rhea], [
+  [hera, "Married to Hera, but their relationship was marked by conflict due to his many affairs."],
+  [cronus, "Led the Olympians in the Titanomachy to overthrow Cronus and the Titans."],
+  [tartarus, "Imprisoned the Titans in Tartarus after his victory."]
+]);
+
+enhanceBox(hera, [cronus, rhea], [
+  [zeus, "Wife of Zeus, frequently punishes his lovers and their offspring out of jealousy."],
+  [heracles, "Tormented Heracles throughout his life because he was a son of Zeus and a mortal woman."],
+  [paris, "Instigated the Trojan War by seeking revenge on Paris for not naming her the fairest goddess."]
+]);
+
+enhanceBox(poseidon, [cronus, rhea], [
+  [athena, "Competed with Athena for the patronage of Athens, losing when she offered the olive tree."],
+  [odysseus, "Punished Odysseus by making his journey home arduous after the hero blinded his son, the Cyclops Polyphemus."],
+  [apollo, "Worked with Apollo to build the walls of Troy, later seeking revenge when they were not paid for their labor."]
+]);
+
+enhanceBox(hades, [cronus, rhea], [
+  [persephone, "Abducted Persephone to be his queen, leading to the creation of the seasons."],
+  [heracles, "Allowed Heracles to borrow his watchdog Cerberus as part of the hero's Twelve Labors."],
+  [orpheus, "Made a rare concession by allowing Orpheus to try to rescue his wife Eurydice from the underworld."]
+]);
+
+enhanceBox(athena, [zeus], [
+  [poseidon, "Defeated Poseidon in a contest to become the patron of Athens by offering the olive tree."],
+  [odysseus, "Guided and protected Odysseus during his long journey home from the Trojan War."],
+  [arachne, "Turned the mortal Arachne into a spider for her hubris in a weaving contest."]
+]);
+
+enhanceBox(aphrodite, [cA], [
+  [ares, "Had a long-standing affair with Ares, the god of war, despite being married to Hephaestus."],
+  [paris, "Influenced Paris to choose her as the fairest goddess by promising him Helen, leading to the Trojan War."],
+  [pygmalion, "Brought the statue crafted by Pygmalion to life as the woman Galatea."]
+]);
+
+enhanceBox(heracles, [zeus, alcmene], [
+  [hera, "Suffered relentless persecution from Hera, who sought to destroy him."],
+  [cerberus, "Captured Cerberus, the three-headed guard dog of the underworld, as one of his Twelve Labors."],
+  [eurystheus, "Served King Eurystheus, who assigned him the Twelve Labors as penance."]
+]);
+
+enhanceBox(achilles, [peleus, thetis], [
+  [patroclus, "Fought alongside his close companion Patroclus, whose death spurred his rage."],
+  [hector, "Killed Hector in revenge for Patroclus's death and desecrated his body."],
+  [agamemnon, "Quarreled with Agamemnon over the prize Briseis, leading to his temporary withdrawal from battle."]
+]);
+
+enhanceBox(odysseus, [laertes, anticleia], [
+  [poseidon, "Angered Poseidon by blinding his son Polyphemus, causing a long and arduous journey home."],
+  [athena, "Protected and guided by Athena, who admired his cleverness."],
+  [circe, "Spent a year with the enchantress Circe, who initially turned his men into swine."]
+]);
+
+enhanceBox(nereus, [pontus, gaia], [
+  [heracles, "Assisted Heracles by revealing the location of the golden apples of the Hesperides."]
+]);
+
+enhanceBox(circe, [helios], [
+  [odysseus, "Turned Odysseus's men into swine, though later helped them on their journey."]
+]);
+
+enhanceBox(apollo, [zeus, leto], [
+  [daphne, "Chased after the nymph Daphne, who transformed into a laurel tree to escape him."],
+  [asclepius, "Fathered Asclepius, the god of medicine, who could even raise the dead."]
+]);
+enhanceBox(ares, [zeus, hera], [
+  [aphrodite, "Had an affair with Aphrodite, despite her marriage to Hephaestus."]
+]);
+
+
+// helpers
+enhanceBox(alcmene, [null],[[]]);
+enhanceBox(peleus, [null],[[]]);
+enhanceBox(thetis, [null],[[]]);
+enhanceBox(laertes, [null],[[]]);
+enhanceBox(anticleia, [null],[[]]);
+enhanceBox(helios, [null],[[]]);
+enhanceBox(leto, [null],[[]]);
+
+enhanceBox(paris, [null],[[]]);
+enhanceBox(persephone, [null],[[]]);
+enhanceBox(orpheus, [null],[[]]);
+enhanceBox(arachne, [null],[[]]);
+enhanceBox(pygmalion, [null],[[]]);
+enhanceBox(cerberus, [null],[[]]);
+enhanceBox(eurystheus, [null],[[]]);
+enhanceBox(patroclus, [null],[[]]);
+enhanceBox(hector, [null],[[]]);
+enhanceBox(agamemnon, [null],[[]]);
+enhanceBox(daphne, [null],[[]]);
+enhanceBox(asclepius, [null],[[]]);
+
+
+enhanceBox(cA, [null],[[]])
+
+
+
+console.log(boxes.filter(box => box.userData.group ==="extraElement"));
+
+
+
+
+
+
+
+
+
+// const chaos = createBox(
+//   "Chaos",
+//   "The primeval void from which everything in existence sprang. Represents the initial state of emptiness before creation.",
+//   "1",
+//   "1"
+// );
+
+// const gaia = createBox(
+//   "Gaia",
+//   "Personification of the Earth and the mother of all life. She gave birth to the Titans, giants, and other primordial beings.",
+//   "2",
+//   "Uranus, Pontus"
+// );
+
+
+
+// const nyx = createBox(
+//   "Nyx",
+//   "",
+//   "3",
+//   "extraElement",
+// );
+
+// const uranus = createBox(
+//   "uranus",
+//   "",
+//   "3",
+//   "extraElement",
+// );
+
+// const tartarus = createBox(
+//   "tartarus",
+//   "",
+//   "3",
+//   "extraElement",
+// );
+
+
+
+// enhanceBox(cA, [null],[[]]);
+
+// enhanceBox(chaos, [cA], [
+//   [nyx, "Generated Nyx, the goddess of night, who embodies the darkness of the void."]
+// ])
+
+// enhanceBox(gaia, [chaos], [
+//     [uranus, "Worked with Uranus to create the first generations of Titans and orchestrated his downfall when he imprisoned their children."]
+//      ,[nyx, "Generated Nyx, the goddess of night, who embodies the darkness of the void."]
+// ])
+
+// enhanceBox(nyx, [null],[[]]);
+
+// enhanceBox(uranus, [null],[[]]);
+
+// enhanceBox(tartarus, [null],[[]]);
+
+
+
+
 
 
 
